@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "A values discovery and journaling app powered by evidence-based psychology",
+  "description": "The only app that ties values, life areas, journaling, and weekly check-ins to one AI coach. Inspired by PERMA, ACT and related psychology.",
   "scripts": {
     "dev": "vite",
     "dev:mobile": "node -e \"const os=require('os');const n=os.networkInterfaces();for(const k of Object.keys(n)){if(k.startsWith('lo'))continue;for(const i of n[k]){if((i.family==='IPv4'||i.family===4)&&!i.internal){console.log('\\n  Mobile: http://'+i.address+':3000\\n');break}}}\" && vite",

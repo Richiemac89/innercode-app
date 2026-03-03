@@ -120,7 +120,7 @@ export function NewLanding({ onGetStarted, onLogin }: NewLandingProps) {
             transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.4s",
           }}
         >
-          Discover your values through evidence-based psychology. Journal daily and live more authentically.
+          The only app that ties your values, life areas, journaling, and weekly check-ins to one AI coach. Live more authentically.
         </p>
 
         {/* Get Started Button */}

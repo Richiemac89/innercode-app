@@ -1,16 +1,17 @@
-# InnerCode - Values Discovery & Journaling App
+# InnerCode - Values, Life Areas & AI Coach
 
-A React application that helps users discover their values through evidence-based psychology, reflect by journaling, and continuously improve their lifestyle through AI-powered insights.
+The only app that ties your values, life areas, journaling, and weekly check-ins to one AI coach. Built with React, inspired by PERMA, Self-Determination Theory, Ikigai, and ACT.
 
 ## 🌟 Features
 
-- **Evidence-Based Onboarding**: Answer questions across 12 life domains using frameworks like PERMA, Self-Determination Theory, Ikigai, and ACT
-- **Value Detection**: Automatic analysis of your responses to identify your core values
-- **Personal Code**: Get a personalized summary of your values and traits
-- **Smart Suggestions**: Receive actionable suggestions aligned with your values and areas needing attention
-- **Daily Journaling**: Journal entries with mood tracking, gratitude practice, and value/category tagging
-- **Calendar View**: Visual calendar to track your journaling journey
-- **Adaptive Results**: Your results improve over time as you journal and tag entries
+- **Onboarding inspired by evidence-based psychology**: Answer reflective questions across 12 life domains (e.g. PERMA, ACT). Rate each area 0–10 and deepen categories in phases.
+- **Value detection**: Your words are analyzed (keyword/stemming) to infer themes and surface your core values.
+- **Personal Code & Results**: Get a personalized summary, life-areas wheel, values league, and suggestions (weak areas, value-aligned, discovery).
+- **Daily journaling**: Entries with mood, gratitude (3 things), and category/value tags. Calendar view and streaks.
+- **AI coach (Inny)**: One coach with full context—your onboarding, results, journal summary, and recent entries—for personalized support.
+- **Weekly check-in**: Re-rate life areas and get an AI summary of what’s improving, stable, or slipping.
+- **Daily Sparks & Insights**: Micro-actions and pattern-based nudges aligned to your values and goals.
+- **Sync & offline**: Account and data sync via Supabase; works offline and syncs when back online.
 
 ## 🚀 Getting Started
 
@@ -41,13 +42,11 @@ A React application that helps users discover their values through evidence-base
 
 ### Building for Production
 
-To create a production build:
-
 ```bash
 npm run build
 ```
 
-To preview the production build:
+Preview the production build:
 
 ```bash
 npm run preview
@@ -59,155 +58,89 @@ npm run preview
 innercode-app/
 ├── src/
 │   ├── components/       # Reusable UI components
-│   │   ├── AnalyzingOverlay.tsx
-│   │   ├── Callout.tsx
-│   │   ├── CategoryHeader.tsx
-│   │   ├── CategoryProgress.tsx
-│   │   ├── CategoryTable.tsx
-│   │   ├── FilterChip.tsx
-│   │   ├── FloatingMenu.tsx
-│   │   ├── GlobalStyles.tsx
-│   │   ├── Toast.tsx
-│   │   └── ValuesLeague.tsx
-│   ├── constants/        # App constants and data
-│   │   ├── categories.ts
-│   │   ├── prompts.ts
-│   │   ├── suggestions.ts
-│   │   └── values.ts
-│   ├── pages/           # Page components
-│   │   ├── Home.tsx
-│   │   ├── Instructions.tsx
-│   │   ├── Journal.tsx
-│   │   ├── JournalCalendar.tsx
-│   │   ├── Onboarding.tsx
-│   │   └── Results.tsx
-│   ├── types/           # TypeScript type definitions
-│   │   └── index.ts
-│   ├── utils/           # Utility functions
-│   │   ├── helpers.ts
-│   │   ├── results.ts
-│   │   └── valueDetection.ts
-│   ├── App.tsx          # Main app component
-│   └── main.tsx         # Entry point
-├── public/              # Static assets
-├── index.html           # HTML template
-├── package.json         # Dependencies and scripts
-├── tsconfig.json        # TypeScript configuration
-├── vite.config.ts       # Vite configuration
-└── README.md           # This file
+│   ├── constants/        # Categories, prompts, values, suggestions
+│   ├── contexts/         # Auth, etc.
+│   ├── lib/              # Supabase client and data helpers
+│   ├── pages/            # Landing, onboarding, dashboard, journal, AI coach, etc.
+│   ├── types/
+│   ├── utils/            # valueDetection, results, aiService, checkInLogic, etc.
+│   ├── App.tsx
+│   └── main.tsx
+├── public/
+├── supabase/             # Edge functions (e.g. Inny chat)
+├── package.json
+├── vite.config.ts
+└── README.md
 ```
 
 ## 🎯 How It Works
 
-### 1. Onboarding Flow
-- Answer questions across 12 life categories
-- Rate each category from 0-10
-- The app analyzes your responses using evidence-based frameworks
+### 1. Sign up & onboarding
+- Create an account (email verification supported). Your data syncs via Supabase so you can use the app on multiple devices.
+- Choose life areas and answer reflective questions. Rate each area 0–10. You can expand categories over time for deeper reflection.
 
-### 2. Value Detection
-The app uses keyword analysis and stemming to detect themes in your responses:
-- **Connection**: relationships, community, belonging
-- **Growth**: learning, improvement, development
-- **Vitality**: health, energy, physical wellness
-- **Discovery**: exploration, adventure, new experiences
-- And more...
+### 2. Value detection
+- Your answers are analyzed (keyword and stemming) to detect themes that map to values (e.g. connection, growth, vitality, meaning). These are inspired by established psychology frameworks, not a clinical assessment.
 
-### 3. Results
-You'll receive:
-- **Category Focus**: Areas ranked by your ratings (weakest first for focused improvement)
-- **Values League**: Your top values ranked by signal strength
-- **Personal Code**: A draft statement of your core values
-- **Suggestions**: Actionable steps for both improvement areas and value-aligned activities
+### 3. Results & Personal Code
+- View your life-areas wheel, values league, and a draft “Personal Code.” Get suggestions: areas to strengthen, actions aligned to your values, and discovery prompts.
 
 ### 4. Journaling
-- Write daily reflections
-- Track your mood with emojis
-- Practice gratitude (3 things daily)
-- Tag entries with categories and values
-- View entries in a calendar
+- Write daily reflections, log mood, list three gratitudes, and tag entries with categories and values. Your journal feeds into Inny and into adaptive results (e.g. category boosts from tagging).
 
-### 5. Adaptive Learning
-As you journal and tag entries:
-- Categories with 3+ tagged entries in 14 days get +1 boost
-- Categories with 7+ tagged entries get +2 boost
-- Your results update to reflect your progress
+### 5. AI coach (Inny)
+- Chat with Inny, who has access to your onboarding, results, journal summary, and recent entries. Ask about your lowest area, top value, or next steps. Suggestions can be opened into a focused chat.
 
-## 🔒 Privacy
+### 6. Weekly check-in & daily habits
+- Re-rate life areas in the quick check-in and see an AI summary of changes. Use Daily Sparks for small, value-aligned actions and Daily Insight for pattern-based nudges.
 
-- **All data is stored locally** in your browser's localStorage
-- No data is sent to any server
-- Your journal entries remain private on your device
-- Clear your browser data to reset the app
+## 🔒 Privacy & data
+
+- **Accounts and sync**: InnerCode uses **Supabase** for authentication and syncing your data across devices. You need an account to use the app and sync.
+- **Your data stays private**: Data is stored in a way that we cannot read your journal entries, answers, or other personal content. The app is designed so your reflections remain private and secure.
+- **Offline**: The app works offline and queues changes to sync when you’re back online.
+- **Control**: You can sign out and manage your account; clear app/browser data to remove local copies.
 
 ## 🛠️ Technology Stack
 
-- **React** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **Local Storage** - Data persistence
+- **React** – UI
+- **TypeScript** – Types
+- **Vite** – Build and dev server
+- **Supabase** – Auth and cloud data (sync)
+- **Local storage** – Offline and cache
 
 ## 🎨 Customization
 
-### Adding New Categories
-Edit `src/constants/categories.ts` and `src/constants/prompts.ts`
-
-### Adding New Values
-Edit `src/constants/values.ts` to add value signals and icons
-
-### Customizing Suggestions
-Edit `src/constants/suggestions.ts` to modify category-specific suggestions
-
-### Styling
-Global styles are in `src/components/GlobalStyles.tsx`
-Each component uses inline styles for easy customization
+- **Categories & prompts**: `src/constants/categories.ts`, `src/constants/prompts.ts`
+- **Values**: `src/constants/values.ts`
+- **Suggestions**: `src/constants/suggestions.ts`
+- **Global styles**: `src/components/GlobalStyles.tsx`
 
 ## 📝 Development
 
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-### Code Organization
-
-- **Components**: Small, reusable UI pieces
-- **Pages**: Full page views
-- **Utils**: Pure functions for logic
-- **Constants**: Data that doesn't change
-- **Types**: TypeScript interfaces and types
-
-## 🤝 Contributing
-
-This is a personal project, but suggestions are welcome! Feel free to:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## 📄 License
-
-MIT License - feel free to use this code for your own projects!
+- `npm run dev` – Start dev server
+- `npm run build` – Production build
+- `npm run preview` – Preview production build
+- `npm run lint` – ESLint
 
 ## 🙏 Acknowledgments
 
-Built with evidence-based psychology frameworks:
+InnerCode’s design is inspired by ideas from:
+
 - **PERMA** (Positive Psychology)
 - **Self-Determination Theory**
 - **Ikigai** (Japanese concept of purpose)
 - **ACT** (Acceptance and Commitment Therapy)
 
-## 💡 Future Ideas
+Developed in partnership with occupational therapists and psychotherapists to support values-aligned living and self-reflection.
 
-- Export journal as PDF/text
-- Data visualization charts
-- Habit tracking
-- Goal setting integration
-- Optional cloud sync
-- Mobile app version
+## 💡 Future ideas
+
+- Export journal or results (e.g. PDF/text)
+- More data visualizations
+- Habit and goal tracking
+- Optional coach/therapist sharing
 
 ---
 
 **Made with ❤️ for personal growth and self-discovery**
-

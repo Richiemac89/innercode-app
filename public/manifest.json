@@ -1,7 +1,7 @@
 {
-  "name": "InnerCode - Values Discovery",
+  "name": "InnerCode - Values, Life Areas & AI Coach",
   "short_name": "InnerCode",
-  "description": "Discover your values through journaling and evidence-based psychology",
+  "description": "The only app that ties values, life areas, journaling, and weekly check-ins to one AI coach",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

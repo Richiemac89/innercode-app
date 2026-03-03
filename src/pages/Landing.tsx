@@ -31,8 +31,7 @@ export function Landing({
           InnerCode
         </h1>
         <p style={{ fontSize: 18, color: "#6b6b6b", marginBottom: 40, lineHeight: 1.6 }}>
-          Discover your values through evidence-based psychology. 
-          Journal daily and live more authentically.
+          The only app that ties your values, life areas, journaling, and weekly check-ins to one AI coach. Live more authentically.
         </p>
         
         <div style={{ display: "grid", gap: 16 }}>

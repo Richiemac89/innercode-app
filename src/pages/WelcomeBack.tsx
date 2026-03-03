@@ -186,7 +186,7 @@ export function WelcomeBack({
             transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.7s",
           }}
         >
-          Get ready to discover your values, strengths, and personalized insights!
+          Get ready to see your values, strengths, and personalized insights—all connected to your AI coach Inny.
         </p>
       </div>
 

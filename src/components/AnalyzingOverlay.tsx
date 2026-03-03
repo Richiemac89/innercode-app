@@ -18,7 +18,7 @@ export function AnalyzingOverlay() {
     { q: "The unexamined life is not worth living.", a: "— Socrates" },
     {
       q: "Act in alignment with your values, not just your moods.",
-      a: "— ACT principle",
+      a: "— inspired by ACT",
     },
   ];
   const [i, setI] = useState(0);
@@ -125,7 +125,7 @@ export function AnalyzingOverlay() {
           {phrase[pI]}
         </div>
         <div style={{ color: "#6b6b6b", marginBottom: 20, fontSize: 14, lineHeight: 1.5 }}>
-          We use evidence-based frameworks to interpret your answers.
+          We use frameworks inspired by PERMA, ACT and related psychology to interpret your answers.
         </div>
 
         <div

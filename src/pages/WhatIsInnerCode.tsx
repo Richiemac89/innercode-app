@@ -16,7 +16,7 @@ const stories: Story[] = [
   {
     emoji: "🧠",
     title: "Welcome to InnerCode",
-    description: "Your personalized journey to authentic living. Here's how it works...",
+    description: "The only app that ties your values, life areas, journaling, and weekly check-ins to one AI coach. Your personalized journey to authentic living starts here.",
     animationClass: "brain-pulse"
   },
   {
@@ -28,7 +28,7 @@ const stories: Story[] = [
   {
     emoji: "☯️",
     title: "Discover Your Values",
-    description: "Understanding your values and how they evolve is key to living authentically. Using evidence-based psychology, we'll identify your core values and suggest activities to help you align with them.",
+    description: "Understanding your values and how they evolve is key to living authentically. Inspired by frameworks like PERMA and ACT, we identify your core values from your words and suggest activities to help you align with them.",
     animationClass: "yin-yang-spin"
   },
   {

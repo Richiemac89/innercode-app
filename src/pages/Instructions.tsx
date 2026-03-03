@@ -16,8 +16,8 @@ interface Story {
 const stories: Story[] = [
   {
     emoji: "🧠",
-    title: "Built on Evidence-Based Psychology",
-    description: "Developed with therapists using PERMA, Self-Determination Theory, Ikigai & ACT. Research shows values-aligned living increases life satisfaction by 23% and reduces anxiety.",
+    title: "Inspired by Evidence-Based Psychology",
+    description: "Inspired by PERMA, Self-Determination Theory, Ikigai & ACT, and developed with therapists. Research shows values-aligned living can increase life satisfaction and support wellbeing.",
     animationClass: "brain-pulse"
   },
   {
@@ -35,7 +35,7 @@ const stories: Story[] = [
   {
     emoji: "🧩",
     title: "Your InnerCode Evolves",
-    description: "Unlike static tests, your results update with every journal entry. Weekly check-ins track progress. Daily Sparks suggest micro-actions aligned with your values and goals.",
+    description: "The only app that ties values, life areas, journaling, and weekly check-ins to one AI coach. Results update with every journal entry; Daily Sparks suggest micro-actions aligned with your values.",
     animationClass: "puzzle-rotate"
   },
   {
@@ -47,7 +47,7 @@ const stories: Story[] = [
   {
     emoji: "🔒",
     title: "Your Data, Your Control",
-    description: "All data stored locally on your device. Optional cloud backup with encryption. Inny uses YOUR insights to coach you—no generic advice, total privacy.",
+    description: "Your data syncs via Supabase so you can use InnerCode on any device. We can't read your journal or answers—it's stored so your reflections stay private. Inny uses YOUR insights to coach you.",
     animationClass: "lock-bounce"
   }
 ];

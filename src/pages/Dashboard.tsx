@@ -661,10 +661,10 @@ export function Dashboard({
           >
             <div style={{ fontSize: 64, marginBottom: 16 }}>🌟</div>
             <h2 style={{ margin: "0 0 12px", fontSize: 24, color: "#3b3b3b" }}>
-              Ready to discover your values?
+              Ready to unlock your full InnerCode?
             </h2>
             <p style={{ color: "#6b6b6b", marginBottom: 24, fontSize: 16 }}>
-              Complete the assessment to unlock your personalized dashboard, results, and journaling features.
+              Complete the assessment to tie your values, life areas, journaling, and check-ins to your AI coach Inny.
             </p>
             <button
               onClick={() => onHowItWorks?.()}
