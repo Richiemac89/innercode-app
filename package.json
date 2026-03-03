@@ -1,0 +1,37 @@
+{
+  "name": "innercode-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A values discovery and journaling app powered by evidence-based psychology",
+  "scripts": {
+    "dev": "vite",
+    "dev:mobile": "node -e \"const os=require('os');const n=os.networkInterfaces();for(const k of Object.keys(n)){if(k.startsWith('lo'))continue;for(const i of n[k]){if((i.family==='IPv4'||i.family===4)&&!i.internal){console.log('\\n  Mobile: http://'+i.address+':3000\\n');break}}}\" && vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "preview:mobile": "node -e \"const os=require('os');const n=os.networkInterfaces();for(const k of Object.keys(n)){if(k.startsWith('lo'))continue;for(const i of n[k]){if((i.family==='IPv4'||i.family===4)&&!i.internal){console.log('\\n  Mobile (preview): http://'+i.address+':4173\\n');break}}}\" && vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.76.0",
+    "openai": "^6.7.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "netlify-cli": "^23.9.5",
+    "supabase": "^2.66.0",
+    "terser": "^5.44.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}
