@@ -138,7 +138,7 @@ export function DailySparks({ sparks, completedSparkIds, onSparkComplete }: Dail
         
         {/* Info */}
         <div style={{ fontSize: 12, color: "#6b7280", marginTop: 12, textAlign: "center" }}>
-          New sparks unlock tomorrow at midnight
+          New sparks will replace completed sparks tomorrow at midnight
         </div>
       </div>
     </>

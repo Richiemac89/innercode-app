@@ -17,6 +17,7 @@ interface AICoachProps {
   onboardingAnswers?: string[];
   journalSummary?: string;
   recentJournalEntries?: JournalSnapshotEntry[];
+  goalsSummary?: string;
   onBack?: () => void;
   onJournal?: (prompt: string, suggestion?: Suggestion) => void;
 }
@@ -41,6 +42,7 @@ export function AICoach({
   onboardingAnswers = [],
   journalSummary = "",
   recentJournalEntries = [],
+  goalsSummary = "",
   onBack,
   onJournal,
 }: AICoachProps) {
@@ -149,6 +151,7 @@ export function AICoach({
           onboardingAnswers,
           journalSummary,
           recentJournalEntries,
+          goalsSummary,
         };
 
         const response = mode === "suggestionChat"

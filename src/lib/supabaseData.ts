@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from './supabase';
-import { ResultsData, JournalEntry, DailyInsight, OnboardingAnswer, CheckInEntry, CategoryHistory } from '../types';
+import { ResultsData, JournalEntry, DailyInsight, OnboardingAnswer, CheckInEntry, CategoryHistory, Goal } from '../types';
 import { extractOnboardingAnswers } from '../utils/contextBuilders';
 import { devLog } from '../utils/devLog';
 import { safeGetItem, safeSetItem, safeRemoveItem, getSafeLocalStorage } from '../utils/helpers';
@@ -14,6 +14,7 @@ export interface SupabaseUserData {
   sparkCompletions: Record<string, string[]>;
   checkInHistory: CheckInEntry[];
   categoryHistory: CategoryHistory[];
+  goals: Goal[];
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -63,9 +64,31 @@ type OfflineOperation =
   | { type: 'updateDailyInsightStatus'; payload: { insightId: string; changes: Partial<Pick<DailyInsight, 'dismissed' | 'interacted'>> } }
   | { type: 'saveSparkCompletions'; payload: Record<string, string[]> }
   | { type: 'saveCheckInHistory'; payload: CheckInEntry[] }
-  | { type: 'saveCategoryHistory'; payload: CategoryHistory[] };
+  | { type: 'saveCategoryHistory'; payload: CategoryHistory[] }
+  | { type: 'saveGoals'; payload: Goal[] };
 
 const OFFLINE_QUEUE_KEY = 'innercode_offline_queue_v1';
+
+const GOALS_STORAGE_KEY = 'innercode_goals';
+
+export function getGoalsFromLocalStorage(): Goal[] {
+  try {
+    const raw = safeGetItem(GOALS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setGoalsInLocalStorage(goals: Goal[]): void {
+  try {
+    safeSetItem(GOALS_STORAGE_KEY, JSON.stringify(goals));
+  } catch (e) {
+    devLog.error('Failed to save goals to localStorage', e);
+  }
+}
 
 const isNavigatorOffline = () => typeof navigator !== 'undefined' && !navigator.onLine;
 
@@ -946,6 +969,110 @@ export async function loadCategoryHistoryFromSupabase(): Promise<CategoryHistory
 }
 
 // ============================================
+// GOALS (user_onboarding_state.goals column)
+// ============================================
+
+export async function loadGoalsFromSupabase(): Promise<Goal[]> {
+  return withSupabase(async (supabase) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('user_onboarding_state')
+        .select('goals')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === '42703') {
+          // Column "goals" does not exist yet – run migration to add it
+          devLog.warn('user_onboarding_state.goals column missing; run migration to add it');
+          return [];
+        }
+        throw error;
+      }
+
+      if (!data?.goals) return [];
+      const goals = Array.isArray(data.goals) ? data.goals : [];
+      return goals as Goal[];
+    } catch (error: any) {
+      if (error?.code === '42703') return [];
+      devLog.error('Error loading goals from Supabase:', error);
+      return [];
+    }
+  });
+}
+
+export async function saveGoalsToSupabase(
+  goals: Goal[],
+  options: { skipQueue?: boolean } = {}
+) {
+  if (!options.skipQueue && isNavigatorOffline()) {
+    enqueueOfflineOperation({ type: 'saveGoals', payload: goals });
+    return { error: 'offline' as const };
+  }
+
+  return withSupabase(async (supabase) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        devLog.error('saveGoalsToSupabase: No authenticated user');
+        return { error: 'Not authenticated' };
+      }
+
+      const { data: existingState, error: fetchError } = await supabase
+        .from('user_onboarding_state')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      const payload = {
+        user_id: user.id,
+        messages: existingState?.messages ?? [],
+        step: existingState?.step ?? 0,
+        selected_categories: existingState?.selected_categories ?? [],
+        completed_categories: existingState?.completed_categories ?? [],
+        category_scores: existingState?.category_scores ?? {},
+        category_phases: existingState?.category_phases ?? {},
+        has_seen_results: existingState?.has_seen_results ?? false,
+        spark_completions: existingState?.spark_completions ?? null,
+        check_in_history: existingState?.check_in_history ?? [],
+        category_history: existingState?.category_history ?? [],
+        goals,
+      };
+
+      const { error } = await supabase
+        .from('user_onboarding_state')
+        .upsert(payload, { onConflict: 'user_id' });
+
+      if (error) {
+        if (error.code === '42703') {
+          devLog.warn('user_onboarding_state.goals column missing; run migration to add it');
+          return { error: null };
+        }
+        throw error;
+      }
+
+      devLog.log('Goals saved to Supabase');
+      return { error: null };
+    } catch (error: any) {
+      if (!options.skipQueue && isNetworkError(error)) {
+        enqueueOfflineOperation({ type: 'saveGoals', payload: goals });
+        devLog.warn('saveGoalsToSupabase: network issue detected, queued for retry');
+        return { error: 'offline' };
+      }
+      devLog.error('Error saving goals to Supabase:', error);
+      return { error: error.message };
+    }
+  });
+}
+
+// ============================================
 // SYNC HELPERS
 // ============================================
 
@@ -1043,6 +1170,16 @@ export async function syncLocalToSupabase() {
           }
         } catch (error) {
           devLog.error('Error syncing category history to Supabase:', error);
+        }
+      }
+
+      // Sync goals
+      const localGoals = getGoalsFromLocalStorage();
+      if (localGoals.length > 0) {
+        try {
+          await saveGoalsToSupabase(localGoals);
+        } catch (error) {
+          devLog.error('Error syncing goals to Supabase:', error);
         }
       }
 
@@ -1291,6 +1428,9 @@ export async function processOfflineQueue() {
       case 'saveCategoryHistory':
         await saveCategoryHistoryToSupabase(operation.payload, { skipQueue: true });
         break;
+      case 'saveGoals':
+        await saveGoalsToSupabase(operation.payload, { skipQueue: true });
+        break;
         default:
           devLog.warn('Unknown offline operation discarded', operation);
       }
@@ -1316,6 +1456,7 @@ export const EMPTY_SUPABASE_USER_DATA: SupabaseUserData = {
   sparkCompletions: {},
   checkInHistory: [],
   categoryHistory: [],
+  goals: [],
 };
 
 export async function fetchSupabaseUserData(): Promise<SupabaseUserData> {
@@ -1339,6 +1480,7 @@ export async function fetchSupabaseUserData(): Promise<SupabaseUserData> {
             onboardingAnswers,
             checkInHistory,
             categoryHistory,
+            goals,
           ] = await Promise.all([
             withTimeout(loadResultsFromSupabase(), 10000, 'loadResultsFromSupabase').catch(() => null),
             withTimeout(loadJournalEntriesFromSupabase(), 10000, 'loadJournalEntriesFromSupabase').catch(() => []),
@@ -1347,6 +1489,7 @@ export async function fetchSupabaseUserData(): Promise<SupabaseUserData> {
             withTimeout(loadOnboardingAnswersFromSupabase(), 10000, 'loadOnboardingAnswersFromSupabase').catch(() => []),
             withTimeout(loadCheckInHistoryFromSupabase(), 10000, 'loadCheckInHistoryFromSupabase').catch(() => []),
             withTimeout(loadCategoryHistoryFromSupabase(), 10000, 'loadCategoryHistoryFromSupabase').catch(() => []),
+            withTimeout(loadGoalsFromSupabase(), 10000, 'loadGoalsFromSupabase').catch(() => []),
           ]);
 
           return {
@@ -1360,6 +1503,7 @@ export async function fetchSupabaseUserData(): Promise<SupabaseUserData> {
               : {},
             checkInHistory: checkInHistory || [],
             categoryHistory: categoryHistory || [],
+            goals: goals || [],
           };
         } catch (error) {
           devLog.error('fetchSupabaseUserData: Failed to load user data', error);

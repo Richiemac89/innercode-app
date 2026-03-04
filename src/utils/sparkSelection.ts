@@ -4,6 +4,9 @@
 import { MicroAction, MICRO_ACTIONS } from "../constants/microActions";
 import { dayKeyFromTs, getCurrentTime, safeGetItem, safeSetItem } from "./helpers";
 
+/** Completed sparks are excluded from selection for this many days so they don't recycle. */
+const RECENTLY_COMPLETED_LOOKBACK_DAYS = 60;
+
 interface SparkState {
   categoryScores: Record<string, number>;
   completedCategories: string[];
@@ -53,13 +56,12 @@ function findActionById(id: string): MicroAction | null {
 }
 
 /**
- * Get today's sparks (3 micro-actions)
+ * Get today's sparks (3 micro-actions).
+ * Rule: Sparks do not change until the user completes one; when the day rolls over,
+ * only completed sparks are replaced—uncompleted ones are carried over.
  * Selection strategy:
- * 1. Carry over uncompleted sparks from yesterday
- * 2. Fill remaining slots with new sparks based on:
- *    - Lowest scoring area (priority)
- *    - Top value alignment (strengthen what matters)
- *    - Random from completed areas (variety)
+ * 1. Carry over uncompleted sparks from yesterday (cache key uses app "today" so yesterday is consistent)
+ * 2. Fill remaining slots with new sparks: lowest scoring area, top value, then random from completed areas
  */
 export function getTodaysSparks(
   state: SparkState,
@@ -140,23 +142,16 @@ export function getTodaysSparks(
     // Use the partially filled sparks array
     const finalSparks = sparks;
     
-    // Carry over incomplete sparks from yesterday
+    // Carry over incomplete sparks from yesterday (try current seed then "default")
     const yesterday = getYesterdayKey();
-    const yesterdaysCachedKey = `sparks_${seed}_${yesterday}`;
     const completions = getSparkCompletionsMap();
     const yesterdaysCompletions = completions[yesterday] || [];
-
-    try {
-      const yesterdaySparks = safeGetItem(yesterdaysCachedKey);
-      if (yesterdaySparks) {
-        const parsedYesterdaySparks: MicroAction[] = JSON.parse(yesterdaySparks);
-        const incompleteSparks = parsedYesterdaySparks.filter(
-          (spark) => !yesterdaysCompletions.includes(spark.id) && !finalSparks.find(s => s.id === spark.id)
-        );
-        incompleteSparks.forEach((spark) => addSpark(spark, finalSparks));
-      }
-    } catch {
-      // ignore cache errors
+    const parsedYesterdaySparks = getYesterdaysCachedSparks(seed, yesterday);
+    if (parsedYesterdaySparks) {
+      const incompleteSparks = parsedYesterdaySparks.filter(
+        (spark) => !yesterdaysCompletions.includes(spark.id) && !finalSparks.find(s => s.id === spark.id)
+      );
+      incompleteSparks.forEach((spark) => addSpark(spark, finalSparks));
     }
 
     const recentlyCompleted = getRecentlyCompletedSparkIds();
@@ -215,23 +210,16 @@ export function getTodaysSparks(
     });
   }
 
-  // Carry over incomplete sparks from yesterday
+  // Carry over incomplete sparks from yesterday (try current seed then "default")
   const yesterday = getYesterdayKey();
-  const yesterdaysCachedKey = `sparks_${seed}_${yesterday}`;
   const completions = getSparkCompletionsMap();
   const yesterdaysCompletions = completions[yesterday] || [];
-
-  try {
-    const yesterdaySparks = safeGetItem(yesterdaysCachedKey);
-    if (yesterdaySparks) {
-      const parsedYesterdaySparks: MicroAction[] = JSON.parse(yesterdaySparks);
-      const incompleteSparks = parsedYesterdaySparks.filter(
-        (spark) => !yesterdaysCompletions.includes(spark.id)
-      );
-      incompleteSparks.forEach((spark) => addSpark(spark, sparks));
-    }
-  } catch {
-    // ignore cache errors
+  const parsedYesterdaySparks = getYesterdaysCachedSparks(seed, yesterday);
+  if (parsedYesterdaySparks) {
+    const incompleteSparks = parsedYesterdaySparks.filter(
+      (spark) => !yesterdaysCompletions.includes(spark.id)
+    );
+    incompleteSparks.forEach((spark) => addSpark(spark, sparks));
   }
 
   const recentlyCompleted = getRecentlyCompletedSparkIds();
@@ -279,32 +267,49 @@ export function getTodaysSparks(
 }
 
 /**
- * Get yesterday's date key
+ * Get yesterday's date key (uses same time source as "today" for consistency)
  */
 function getYesterdayKey(): string {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return dayKeyFromTs(yesterday.getTime());
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  return dayKeyFromTs(getCurrentTime() - oneDayMs);
 }
 
 /**
- * Get recently completed spark IDs (last 7 days)
- * This prevents the same spark from appearing too frequently
+ * Load yesterday's cached sparks. Tries current seed first, then "default",
+ * so sparks are preserved if seed changed (e.g. userId loaded after first visit).
+ */
+function getYesterdaysCachedSparks(seed: string, yesterday: string): MicroAction[] | null {
+  for (const trySeed of [seed, "default"]) {
+    const key = `sparks_${trySeed}_${yesterday}`;
+    try {
+      const raw = safeGetItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
+/**
+ * Get spark IDs completed within the lookback window.
+ * These are excluded from selection so completed sparks are not recycled for a long time.
  */
 function getRecentlyCompletedSparkIds(): string[] {
   const completions = getSparkCompletionsMap();
   const recentIds = new Set<string>();
-  const today = new Date();
-  
-  // Look back 7 days
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dateKey = dayKeyFromTs(date.getTime());
+  const now = getCurrentTime();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  for (let i = 0; i < RECENTLY_COMPLETED_LOOKBACK_DAYS; i++) {
+    const dateKey = dayKeyFromTs(now - i * oneDayMs);
     const dayCompletions = completions[dateKey] || [];
     dayCompletions.forEach(id => recentIds.add(id));
   }
-  
+
   return Array.from(recentIds);
 }
 
@@ -382,11 +387,11 @@ export function getSparkCompletionsMap(): Record<string, string[]> {
  * Save spark completions to localStorage
  */
 function saveSparkCompletions(completions: Record<string, string[]>): void {
-  // Keep max 30 days
+  // Keep enough days to support RECENTLY_COMPLETED_LOOKBACK_DAYS so completed sparks don't recycle
   const entries = Object.entries(completions);
-  if (entries.length > 30) {
+  if (entries.length > RECENTLY_COMPLETED_LOOKBACK_DAYS) {
     entries.sort((a, b) => b[0].localeCompare(a[0])); // Sort by date desc
-    const trimmed = Object.fromEntries(entries.slice(0, 30));
+    const trimmed = Object.fromEntries(entries.slice(0, RECENTLY_COMPLETED_LOOKBACK_DAYS));
     safeSetItem("innercode_daily_actions", JSON.stringify(trimmed));
   } else {
     safeSetItem("innercode_daily_actions", JSON.stringify(completions));

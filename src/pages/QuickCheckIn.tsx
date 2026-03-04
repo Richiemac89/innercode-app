@@ -22,6 +22,7 @@ interface QuickCheckInProps {
   onboardingAnswers?: string[];
   journalSummary?: string;
   recentJournalEntries?: JournalSnapshotEntry[];
+  goalsSummary?: string;
 }
 
 export function QuickCheckIn({
@@ -32,6 +33,7 @@ export function QuickCheckIn({
   onboardingAnswers = [],
   journalSummary = "",
   recentJournalEntries = [],
+  goalsSummary = "",
 }: QuickCheckInProps) {
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
   const [ratings, setRatings] = useState<Record<string, number>>({});
@@ -97,6 +99,7 @@ export function QuickCheckIn({
       onboardingAnswers,
       journalSummary,
       recentJournalEntries,
+      goalsSummary,
     });
     setSummary(summaryText);
   };

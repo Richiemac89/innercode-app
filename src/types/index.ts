@@ -10,6 +10,7 @@ export type Route =
   | "welcomeBack"
   | "dashboard"
   | "instructions"
+  | "howToUseInny"
   | "categorySelection"
   | "onboarding"
   | "analyzing"
@@ -18,6 +19,7 @@ export type Route =
   | "aiCoach"
   | "journalCalendar"
   | "quickCheckIn"
+  | "goals"
   | "settings";
 
 export type Msg = {
@@ -45,6 +47,8 @@ export type JournalEntry = {
   gratitude: string[];
   mood?: string;
   suggestionRef?: string;
+  /** Optional link to a goal when this entry reflects on that goal */
+  goalRef?: { goalId: string; snippet?: string };
   createdAt: number;
   category?: string; // legacy back-compat
 };
@@ -132,5 +136,31 @@ export interface InsightState {
   onboardingAnswers?: string[];
   journalSummary?: string;
   recentJournalEntries?: JournalSnapshotEntry[];
+}
+
+// Goal-setting (SMART, value-aligned)
+export type GoalHorizon = "short" | "mid" | "long";
+
+export interface GoalActionStep {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  specific: string;
+  measurable: string;
+  achievable?: string;
+  relevantValue: string;
+  lifeArea?: string;
+  dueDate: number;
+  horizon: GoalHorizon;
+  actionSteps: GoalActionStep[];
+  createdAt: number;
+  updatedAt: number;
+  /** When set, goal is completed (100%) regardless of steps */
+  completedAt?: number;
 }
 

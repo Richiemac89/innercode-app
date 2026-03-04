@@ -41,6 +41,9 @@ interface JournalProps {
   entries: JournalEntry[];
   addEntry: (e: Omit<JournalEntry, "id" | "createdAt">) => void;
   userName?: string;
+  /** When goals are unlocked and user has goals, show optional goal reflection */
+  goals?: Array<{ id: string; title: string }>;
+  goalsUnlocked?: boolean;
 }
 
 export function Journal({
@@ -52,6 +55,8 @@ export function Journal({
   entries,
   addEntry,
   userName,
+  goals = [],
+  goalsUnlocked = false,
 }: JournalProps) {
   const [text, setText] = useState("");
   const [cats, setCats] = useState<string[]>([]);
@@ -61,6 +66,9 @@ export function Journal({
   const [saved, setSaved] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationMsg, setCelebrationMsg] = useState("");
+  const [goalRefGoalId, setGoalRefGoalId] = useState<string>("");
+  const [goalReflectionSnippet, setGoalReflectionSnippet] = useState("");
+  const [goalReflectionExpanded, setGoalReflectionExpanded] = useState(false);
 
   const todayKey = dayKeyFromTs(getCurrentTime());
   const hasToday = entries.some((e) => dayKeyFromTs(e.createdAt) === todayKey);
@@ -88,6 +96,7 @@ export function Journal({
       values: vals,
       gratitude: grat.filter(Boolean),
       mood,
+      goalRef: goalRefGoalId ? { goalId: goalRefGoalId, snippet: goalReflectionSnippet.trim() || undefined } : undefined,
     });
     setSaved(true);
 
@@ -465,6 +474,76 @@ export function Journal({
               })}
             </div>
           </div>
+
+          {/* Goal reflection (optional) - when user has goals */}
+          {goalsUnlocked && goals.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setGoalReflectionExpanded((e) => !e)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 6,
+                  background: "none",
+                  border: "none",
+                  cursor: locked ? "default" : "pointer",
+                  padding: 0,
+                  opacity: locked ? 0.7 : 1,
+                }}
+              >
+                <span style={{ fontSize: 20 }}>🎯</span>
+                <strong>Reflect on a goal (optional)</strong>
+                <span style={{ marginLeft: "auto", fontSize: 14 }}>{goalReflectionExpanded ? "▼" : "▶"}</span>
+              </button>
+              {goalReflectionExpanded && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#4b4b4b", fontSize: 14, marginBottom: 8 }}>
+                    Link this entry to a goal and note how it went.
+                  </div>
+                  <select
+                    value={goalRefGoalId}
+                    onChange={(e) => setGoalRefGoalId(e.target.value)}
+                    disabled={locked}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: "2px solid rgba(106, 58, 191, 0.2)",
+                      marginBottom: 8,
+                      background: "#fff",
+                      fontSize: 14,
+                    }}
+                  >
+                    <option value="">None</option>
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </select>
+                  {goalRefGoalId && (
+                    <input
+                      placeholder="How did it go?"
+                      value={goalReflectionSnippet}
+                      onChange={(e) => setGoalReflectionSnippet(e.target.value)}
+                      disabled={locked}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 12,
+                        border: "2px solid rgba(106, 58, 191, 0.2)",
+                        background: "#fff",
+                        fontSize: 14,
+                        outline: "none",
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Save */}
           <div style={{ display: "flex", justifyContent: "center" }}>

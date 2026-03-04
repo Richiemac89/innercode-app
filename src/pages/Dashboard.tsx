@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { JournalEntry, DailyInsight as DailyInsightType } from "../types";
+import { JournalEntry, DailyInsight as DailyInsightType, Goal } from "../types";
 import { dayKeyFromTs, getCurrentTime } from "../utils/helpers";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../utils/helpers";
 import { useResetZoom } from "../utils/useResetZoom";
@@ -20,6 +20,7 @@ interface DashboardProps {
   onJournal: () => void;
   onAICoach?: () => void;
   onHowItWorks?: () => void;
+  onHowToUseInny?: () => void;
   onContinueOnboarding?: () => void;
   onExpandCategories?: () => void;
   onStartCheckIn?: () => void;
@@ -38,6 +39,9 @@ interface DashboardProps {
   recentJournalEntries?: JournalSnapshotEntry[];
   sparkCompletions?: Record<string, string[]>;
   onSparkCompletionsPersist?: (completions: Record<string, string[]>) => void | Promise<void>;
+  goals?: Goal[];
+  goalsUnlocked?: boolean;
+  onViewGoals?: () => void;
 }
 
 function calculateStreak(entries: JournalEntry[]): number {
@@ -122,6 +126,7 @@ export function Dashboard({
   onJournal,
   onAICoach,
   onHowItWorks,
+  onHowToUseInny,
   onContinueOnboarding,
   onExpandCategories,
   onStartCheckIn,
@@ -140,6 +145,9 @@ export function Dashboard({
   recentJournalEntries = [],
   sparkCompletions,
   onSparkCompletionsPersist,
+  goals = [],
+  goalsUnlocked = false,
+  onViewGoals,
 }: DashboardProps) {
   // Reset zoom and scroll to top when component mounts
   useResetZoom();
@@ -880,12 +888,62 @@ export function Dashboard({
           </div>
         )}
 
+        {/* 👇 GOALS WIDGET - when unlocked and user has goals (above Last journal entry) */}
+        {goalsUnlocked && goals.length > 0 && onViewGoals && (
+          <button
+            type="button"
+            onClick={onViewGoals}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))",
+              border: "2px solid rgba(139,92,246,0.25)",
+              padding: "16px 20px",
+              borderRadius: 16,
+              marginTop: 24,
+              marginBottom: 24,
+              cursor: "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(124,58,237,0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#5b21b6" }}>🎯 Goals</span>
+              <span style={{ fontSize: 14, color: "#6b7280" }}>{goals.length} goal{goals.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div style={{ fontSize: 14, color: "#6b7280" }}>
+              {(() => {
+                const n = goals.length;
+                if (n === 0) return "Overall progress: 0%";
+                const sumPct = goals.reduce((sum, g) => {
+                  if (g.completedAt) return sum + 100;
+                  const steps = g.actionSteps || [];
+                  if (steps.length === 0) return sum;
+                  const done = steps.filter((s) => s.done).length;
+                  return sum + Math.round((done / steps.length) * 100);
+                }, 0);
+                const pct = Math.round(sumPct / n);
+                return `Overall progress: ${pct}%`;
+              })()}
+            </div>
+          </button>
+        )}
+        {/* 👆 GOALS WIDGET END */}
+
         {/* Last Journal Info */}
         <div
           style={{
             background: "#fff",
             borderRadius: 16,
             padding: 16,
+            marginTop: 24,
             marginBottom: 24,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}
@@ -983,6 +1041,28 @@ export function Dashboard({
               }}
             >
               ℹ️ How InnerCode Works
+            </button>
+          )}
+
+          {onHowToUseInny && (
+            <button
+              onClick={onHowToUseInny}
+              style={{
+                padding: "14px 20px",
+                borderRadius: 16,
+                border: "1px solid #d1d5db",
+                background: "#fff",
+                color: "#6b6b6b",
+                fontWeight: 600,
+                fontSize: 16,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+              }}
+            >
+              🤖 How to use InnerCode and Inny
             </button>
           )}
         </div>

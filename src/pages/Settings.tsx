@@ -9,10 +9,11 @@ interface SettingsProps {
   userName?: string;
   onResetOnboarding: () => void;
   onResetAllData: () => void;
+  onLogout?: () => void;
 }
 
 type ConfirmDialog = {
-  type: "resetOnboarding" | "resetAllData" | null;
+  type: "resetOnboarding" | "resetAllData" | "logout" | null;
 };
 
 export function Settings({
@@ -20,10 +21,19 @@ export function Settings({
   userName,
   onResetOnboarding,
   onResetAllData,
+  onLogout,
 }: SettingsProps) {
   useResetZoom();
 
-  const { user, userProfile, updateProfile, signOut } = useAuth();
+  const { user, userProfile, updateProfile, forceLogoutAndRedirect } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const handleLogout = () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    setConfirmDialog({ type: null });
+    // Use synchronous clear + redirect so we never hang on async signOut (e.g. getSupabaseClient)
+    forceLogoutAndRedirect();
+  };
 
   // Form states
   const [firstName, setFirstName] = useState(userProfile?.first_name || "");
@@ -656,9 +666,11 @@ export function Settings({
           </div>
         </div>
 
-        {/* Account Section */}
+        {/* Account Section - position relative and z-index so logout control is on top */}
         <div
           style={{
+            position: "relative",
+            zIndex: 10,
             background: "#fff",
             borderRadius: 16,
             padding: 24,
@@ -677,25 +689,47 @@ export function Settings({
             👋 Account
           </h2>
 
-          <button
-            onClick={async () => {
-              await signOut();
-              window.location.href = '/';
+          <a
+            href="#"
+            role="button"
+            tabIndex={0}
+            aria-label="Log out"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setConfirmDialog({ type: "logout" });
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              setConfirmDialog({ type: "logout" });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setConfirmDialog({ type: "logout" });
+              }
             }}
             style={{
-              padding: "12px 24px",
+              display: "block",
+              padding: "14px 24px",
+              minHeight: 48,
               borderRadius: 8,
               border: "2px solid #ef4444",
-              background: "#fff",
+              background: isLoggingOut ? "#fef2f2" : "#fff",
               color: "#ef4444",
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: isLoggingOut ? "wait" : "pointer",
               fontSize: 16,
               width: "100%",
+              textAlign: "center",
+              textDecoration: "none",
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent",
+              boxSizing: "border-box",
             }}
           >
-            🚪 Log Out
-          </button>
+            {isLoggingOut ? "Logging out…" : "🚪 Log Out"}
+          </a>
         </div>
 
         {/* Back Button */}
@@ -749,9 +783,10 @@ export function Settings({
               boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
               animation: "scaleIn 0.2s ease-out",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontSize: 48, textAlign: "center", marginBottom: 16 }}>
-              {confirmDialog.type === "resetOnboarding" ? "⚠️" : "🚨"}
+              {confirmDialog.type === "logout" ? "🚪" : confirmDialog.type === "resetOnboarding" ? "⚠️" : "🚨"}
             </div>
             <h3
               style={{
@@ -762,9 +797,11 @@ export function Settings({
                 textAlign: "center",
               }}
             >
-              {confirmDialog.type === "resetOnboarding"
-                ? "Reset Onboarding Data?"
-                : "Reset All Data?"}
+              {confirmDialog.type === "logout"
+                ? "Log out?"
+                : confirmDialog.type === "resetOnboarding"
+                  ? "Reset Onboarding Data?"
+                  : "Reset All Data?"}
             </h3>
             <p
               style={{
@@ -775,7 +812,9 @@ export function Settings({
                 textAlign: "center",
               }}
             >
-              {confirmDialog.type === "resetOnboarding" ? (
+              {confirmDialog.type === "logout" ? (
+                "Are you sure you want to log out? You can sign back in anytime."
+              ) : confirmDialog.type === "resetOnboarding" ? (
                 <>
                   Continuing will delete:
                   <br />
@@ -820,9 +859,11 @@ export function Settings({
               </button>
               <button
                 onClick={
-                  confirmDialog.type === "resetOnboarding"
-                    ? handleConfirmResetOnboarding
-                    : handleConfirmResetAllData
+                  confirmDialog.type === "logout"
+                    ? handleLogout
+                    : confirmDialog.type === "resetOnboarding"
+                      ? handleConfirmResetOnboarding
+                      : handleConfirmResetAllData
                 }
                 style={{
                   flex: 1,
@@ -830,14 +871,18 @@ export function Settings({
                   borderRadius: 12,
                   border: "none",
                   background:
-                    confirmDialog.type === "resetOnboarding" ? "#fbbf24" : "#ef4444",
+                    confirmDialog.type === "logout"
+                      ? "#ef4444"
+                      : confirmDialog.type === "resetOnboarding"
+                        ? "#fbbf24"
+                        : "#ef4444",
                   color: "#fff",
                   fontWeight: 700,
                   cursor: "pointer",
                   fontSize: 16,
                 }}
               >
-                {confirmDialog.type === "resetOnboarding" ? "Reset Onboarding" : "Reset All"}
+                {confirmDialog.type === "logout" ? "Log out" : confirmDialog.type === "resetOnboarding" ? "Reset Onboarding" : "Reset All"}
               </button>
             </div>
           </div>

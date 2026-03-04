@@ -8,14 +8,17 @@ type UserState = "first-time" | "in-progress" | "completed";
 export function FloatingMenu({ 
   onNav,
   onLogout,
+  goalsUnlocked = false,
 }: { 
   onNav: (route: Route) => void;
   onLogout?: () => void;
+  goalsUnlocked?: boolean;
 }) {
   const { userData, syncComplete } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userState, setUserState] = useState<UserState>("first-time");
   const [showLockedTooltip, setShowLockedTooltip] = useState<string | null>(null);
+  const [showGoalsUnlockInfo, setShowGoalsUnlockInfo] = useState(false);
 
   // CRITICAL FIX: Use useEffect instead of useMemo since we're setting state
   // Also check both userData and local storage to prevent false "in-progress" state during refresh
@@ -223,6 +226,7 @@ export function FloatingMenu({
                     { label: "🤖 AI Coach", r: "aiCoach" },
                     { label: "📓 Journal", r: "journal" },
                     { label: "📅 Journal Calendar", r: "journalCalendar" },
+                    { label: "🎯 Goals", r: "goals", locked: !goalsUnlocked },
                   );
                 } else {
                   items.push(
@@ -230,65 +234,110 @@ export function FloatingMenu({
                     { label: "🤖 AI Coach", r: "aiCoach", locked: true },
                     { label: "📓 Journal", r: "journal", locked: true },
                     { label: "📅 Journal Calendar", r: "journalCalendar", locked: true },
+                    { label: "🎯 Goals", r: "goals", locked: true },
                   );
                 }
 
                 items.push({ label: "ℹ️ How InnerCode Works", r: "instructions" });
+                items.push({ label: "🤖 How to use Inny", r: "howToUseInny" });
 
                 return items;
-              })().map((it) => (
-                <div
-                  key={it.r}
-                  style={{ marginBottom: "8px" }}
-                >
-                  <button
-                    onClick={() => {
-                      if (it.locked) return;
-                      
-                      // Blur any active input before navigation to trigger zoom-out
-                      if (document.activeElement instanceof HTMLElement) {
-                        document.activeElement.blur();
-                      }
-                      
-                      setSidebarOpen(false);
-                      
-                      // Delay to allow blur to take effect and zoom to reset
-                      setTimeout(() => {
-                        onNav(it.r as Route);
-                      }, 100);
-                    }}
-                    disabled={it.locked}
+              })().map((it) => {
+                const isGoalsLocked = it.r === "goals" && it.locked;
+                return (
+                  <div
+                    key={it.r}
                     style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "12px 16px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "transparent",
-                      cursor: it.locked ? "not-allowed" : "pointer",
-                      opacity: it.locked ? 0.5 : 1,
-                      color: it.locked ? "rgba(255, 255, 255, 0.4)" : "#ffffff",
+                      marginBottom: "8px",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      fontSize: "16px",
-                      fontWeight: "500",
-                      transition: "background-color 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!it.locked) {
-                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
+                      gap: 4,
                     }}
                   >
-                    <span>{it.label}</span>
-                    {it.locked && <span style={{ fontSize: 14 }}>🔒</span>}
-                  </button>
-                </div>
-              ))}
+                    <button
+                      onClick={() => {
+                        if (it.locked) return;
+
+                        // Blur any active input before navigation to trigger zoom-out
+                        if (document.activeElement instanceof HTMLElement) {
+                          document.activeElement.blur();
+                        }
+
+                        setSidebarOpen(false);
+
+                        // Delay to allow blur to take effect and zoom to reset
+                        setTimeout(() => {
+                          onNav(it.r as Route);
+                        }, 100);
+                      }}
+                      disabled={it.locked}
+                      style={{
+                        flex: 1,
+                        textAlign: "left",
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "transparent",
+                        cursor: it.locked ? "not-allowed" : "pointer",
+                        opacity: it.locked ? 0.5 : 1,
+                        color: it.locked ? "rgba(255, 255, 255, 0.4)" : "#ffffff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        fontSize: "16px",
+                        fontWeight: "500",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!it.locked) {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <span>{it.label}</span>
+                      {it.locked && <span style={{ fontSize: 14 }}>🔒</span>}
+                    </button>
+                    {isGoalsLocked && (
+                      <button
+                        type="button"
+                        aria-label="How to unlock Goals"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowGoalsUnlockInfo(true);
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          background: "rgba(255, 255, 255, 0.15)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: 24,
+                          height: 24,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          color: "#ffffff",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.25)";
+                          e.currentTarget.style.transform = "scale(1.1)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
+                          e.currentTarget.style.transform = "scale(1)";
+                        }}
+                      >
+                        ℹ️
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Settings Button */}
@@ -335,6 +384,81 @@ export function FloatingMenu({
               </button>
             </div>
           </div>
+
+          {/* Goals unlock info dialog */}
+          {showGoalsUnlockInfo && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1001,
+                padding: 20,
+              }}
+              onClick={() => setShowGoalsUnlockInfo(false)}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 20,
+                  padding: "24px",
+                  maxWidth: 400,
+                  width: "100%",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                  position: "relative",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={() => setShowGoalsUnlockInfo(false)}
+                  style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    background: "rgba(0,0,0,0.05)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: 18,
+                    color: "#6b6b6b",
+                  }}
+                >
+                  ✕
+                </button>
+                <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🎯</div>
+                <h3 style={{
+                  margin: "0 0 12px",
+                  fontSize: 20,
+                  fontWeight: 800,
+                  color: "#3b3b3b",
+                  textAlign: "center",
+                }}>
+                  Unlock Goal Setting
+                </h3>
+                <p style={{
+                  color: "#6b6b6b",
+                  fontSize: 15,
+                  lineHeight: 1.6,
+                  margin: 0,
+                }}>
+                  Unlock goal setting once you've explored all 12 life areas, journaled 5 times, and completed 3 sparks.
+                </p>
+              </div>
+            </div>
+          )}
         </>
       )}
 

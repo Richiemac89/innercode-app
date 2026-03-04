@@ -23,6 +23,7 @@ export interface UserContext {
   onboardingAnswers?: string[];
   journalSummary?: string;
   recentJournalEntries?: JournalSnapshotEntry[];
+  goalsSummary?: string;
 }
 
 // Check-in changes summary

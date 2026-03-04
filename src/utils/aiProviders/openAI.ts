@@ -198,6 +198,7 @@ export class OpenAIService implements AIService {
     if (journalSummary) lines.push("Journal summary: " + journalSummary);
     if (recentMood) lines.push("Latest mood: " + recentMood);
     if (journalHighlights) lines.push("Recent journals (use these to match and tailor): " + journalHighlights);
+    if (context.goalsSummary) lines.push(context.goalsSummary + ". Reference their goals when relevant (e.g. progress, next steps).");
     return lines.join("\n");
   }
 

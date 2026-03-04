@@ -11,6 +11,7 @@ The only app that ties your values, life areas, journaling, and weekly check-ins
 - **AI coach (Inny)**: One coach with full context—your onboarding, results, journal summary, and recent entries—for personalized support.
 - **Weekly check-in**: Re-rate life areas and get an AI summary of what’s improving, stable, or slipping.
 - **Daily Sparks & Insights**: Micro-actions and pattern-based nudges aligned to your values and goals.
+- **Goal setting**: Set short-, mid-, and long-term SMART goals linked to your values. Unlocks after you complete all 12 life areas, 5 journal entries, and 3 sparks. Track progress with action steps; reflect on goals in the journal; Inny and weekly check-in reference your goals.
 - **Sync & offline**: Account and data sync via Supabase; works offline and syncs when back online.
 
 ## 🚀 Getting Started
@@ -94,6 +95,9 @@ innercode-app/
 ### 6. Weekly check-in & daily habits
 - Re-rate life areas in the quick check-in and see an AI summary of changes. Use Daily Sparks for small, value-aligned actions and Daily Insight for pattern-based nudges.
 
+### 7. Goal setting (when unlocked)
+- Unlock Goals after completing all 12 life areas, 5 journal entries, and 3 sparks. Add SMART goals (Specific, Measurable, Relevant to a value, Time-bound) with action steps and track progress. Optionally link journal entries to a goal ("Reflect on a goal"). Inny and the weekly check-in use your goals to tailor support.
+
 ## 🔒 Privacy & data
 
 - **Accounts and sync**: InnerCode uses **Supabase** for authentication and syncing your data across devices. You need an account to use the app and sync.
@@ -108,6 +112,17 @@ innercode-app/
 - **Vite** – Build and dev server
 - **Supabase** – Auth and cloud data (sync)
 - **Local storage** – Offline and cache
+
+### Supabase: Goals sync
+
+Goals are synced to Supabase so they persist across devices and survive logout. If the `goals` column is missing on `user_onboarding_state`, run this in the Supabase SQL Editor (Dashboard → SQL Editor):
+
+```sql
+ALTER TABLE public.user_onboarding_state
+ADD COLUMN IF NOT EXISTS goals jsonb DEFAULT '[]'::jsonb;
+```
+
+Or apply the migration file: `supabase/migrations/20250303120000_add_goals_to_user_onboarding_state.sql`.
 
 ## 🎨 Customization
 

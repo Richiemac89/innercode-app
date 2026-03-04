@@ -13,6 +13,7 @@ import { VerifyEmail } from "./pages/VerifyEmail";
 import { WelcomeBack } from "./pages/WelcomeBack";
 import { Dashboard } from "./pages/Dashboard";
 import { Instructions } from "./pages/Instructions";
+import { HowToUseInny } from "./pages/HowToUseInny";
 import { CategorySelection } from "./pages/CategorySelection";
 import { EnhancedOnboarding } from "./pages/EnhancedOnboarding";
 import { Results } from "./pages/Results";
@@ -21,6 +22,7 @@ import { AICoach } from "./pages/AICoach";
 import { JournalCalendar } from "./pages/JournalCalendar";
 import { QuickCheckIn } from "./pages/QuickCheckIn";
 import { Settings } from "./pages/Settings";
+import { Goals } from "./pages/Goals";
 import { PROMPTS } from "./constants/prompts";
 import { CATEGORY_ICONS } from "./constants/categories";
 import { VALUE_ICONS } from "./constants/values";
@@ -43,7 +45,8 @@ import { upsertOnboardingAnswerToSupabase, processOfflineQueue, saveOnboardingSt
 import { devLog } from "./utils/devLog";
 import { FEATURES } from "./constants/featureFlags";
 import { getAreasForCheckIn, getCheckInHistorySync, shouldShowCheckIn } from "./utils/checkInLogic";
-import { extractOnboardingAnswers, buildJournalSummary, formatOnboardingAnswersFromSupabase } from "./utils/contextBuilders";
+import { extractOnboardingAnswers, buildJournalSummary, formatOnboardingAnswersFromSupabase, buildGoalsSummary } from "./utils/contextBuilders";
+import { getGoalsUnlockProgress } from "./utils/goalUnlock";
 
 export default function App() {
   const {
@@ -149,7 +152,7 @@ export default function App() {
     if (lastActiveRoute && typeof lastActiveRoute === 'string') {
       const validRoutes: Route[] = [
         'dashboard', 'journal', 'journalCalendar', 'aiCoach', 
-        'results', 'settings', 'instructions', 'quickCheckIn'
+        'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals'
       ];
       if (validRoutes.includes(lastActiveRoute as Route)) {
         // Only restore if user is authenticated and has completed onboarding
@@ -355,7 +358,7 @@ export default function App() {
           if (lastActiveRoute && lastActiveRoute !== route) {
             const validRoutes: Route[] = [
               'dashboard', 'journal', 'journalCalendar', 'aiCoach', 
-              'results', 'settings', 'instructions', 'quickCheckIn'
+              'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals'
             ];
             if (validRoutes.includes(lastActiveRoute as Route) && user?.email_confirmed_at) {
               const hasResults = !!userData.results || !!safeGetItem('innercode_results');
@@ -658,6 +661,7 @@ export default function App() {
       'journalCalendar', 
       'aiCoach',
       'instructions',
+      'howToUseInny',
       'settings',
     ];
     
@@ -1111,6 +1115,19 @@ export default function App() {
   const journalSummary = journalInsights.summaryText;
   const recentJournalEntries = journalInsights.recentEntries;
 
+  const goalsUnlockProgress = useMemo(
+    () =>
+      getGoalsUnlockProgress(
+        completedCategories,
+        categories.length,
+        journalEntries.length,
+        sparkCompletions
+      ),
+    [completedCategories, categories.length, journalEntries.length, sparkCompletions]
+  );
+  const goalsUnlocked = goalsUnlockProgress.unlocked;
+  const goals = userData.goals ?? [];
+
   // Persist results to localStorage and Supabase
   useEffect(() => {
     if (results) {
@@ -1150,6 +1167,7 @@ export default function App() {
       gratitude: Array.isArray(e.gratitude) ? e.gratitude.map(String) : [],
       mood: e.mood ? String(e.mood) : undefined,
       suggestionRef: e.suggestionRef ? String(e.suggestionRef) : undefined,
+      goalRef: e.goalRef ? { goalId: e.goalRef.goalId, snippet: e.goalRef.snippet } : undefined,
     };
     setJournalEntries((prev: JournalEntry[]) => {
       const updated = [entry, ...prev];
@@ -2040,6 +2058,7 @@ export default function App() {
         "journalCalendar",
         "aiCoach",
         "instructions",
+        "howToUseInny",
         "settings",
       ]),
     []
@@ -2121,7 +2140,7 @@ export default function App() {
     
     const validRoutes: Route[] = [
       'dashboard', 'journal', 'journalCalendar', 'aiCoach', 
-      'results', 'settings', 'instructions', 'quickCheckIn'
+      'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals'
     ];
     
     if (!validRoutes.includes(lastActiveRoute as Route)) {
@@ -2431,7 +2450,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
         <Dashboard
           userName={userName}
           userId={user?.id || undefined}
@@ -2439,6 +2458,7 @@ export default function App() {
           onJournal={() => setRoute("journal")}
           onAICoach={() => setRoute("aiCoach")}
           onHowItWorks={() => setRoute("instructions")}
+          onHowToUseInny={() => setRoute("howToUseInny")}
           onContinueOnboarding={hasIncompleteCategories ? () => setRoute("onboarding") : hasPartialOnboarding ? () => setRoute("onboarding") : undefined}
           onExpandCategories={canExpandCategories ? () => setRoute("categorySelection") : undefined}
           onStartCheckIn={() => setRoute("quickCheckIn")}
@@ -2455,6 +2475,9 @@ export default function App() {
           recentJournalEntries={recentJournalEntries}
           sparkCompletions={sparkCompletions}
           onSparkCompletionsPersist={persistSparkCompletions}
+          goals={goals}
+          goalsUnlocked={goalsUnlocked}
+          onViewGoals={() => setRoute("goals")}
         />
       </>
     );
@@ -2475,6 +2498,30 @@ export default function App() {
     );
   }
 
+  if (route === "howToUseInny") {
+    if (!user || !user.email_confirmed_at) {
+      return (
+        <>
+          <GlobalStyles />
+          <NewLanding
+            onGetStarted={() => setRoute("whatIsInnerCode")}
+            onLogin={() => setRoute("login")}
+          />
+        </>
+      );
+    }
+    return (
+      <>
+        <GlobalStyles />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <HowToUseInny
+          onBack={() => setRoute("dashboard")}
+          onOpenAICoach={() => setRoute("aiCoach")}
+        />
+      </>
+    );
+  }
+
   if (route === "categorySelection") {
     // isExpanding should be true only if user has COMPLETED categories and wants to add more
     // NOT if they just selected categories but haven't completed onboarding for them yet
@@ -2487,7 +2534,7 @@ export default function App() {
       <>
         <GlobalStyles />
         {/* Hide menu during initial onboarding, show it during expansion */}
-        {isExpanding && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />}
+        {isExpanding && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />}
         <CategorySelection
           categories={availableCategories}
           preselected={isExpanding ? [] : selectedCategories}
@@ -2566,7 +2613,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        {isExpansion && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />}
+        {isExpansion && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />}
         <Toast text="Saved ✓" show={showToast} />
         <EnhancedOnboarding
           messages={messages}
@@ -2610,7 +2657,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
         <Results
           personalCode={results.personalCode}
           aligned={results.aligned}
@@ -2667,7 +2714,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
         <Journal
           onBack={() => setRoute("results")}
           categories={[...categories]}
@@ -2676,6 +2723,40 @@ export default function App() {
           valueIcons={VALUE_ICONS}
           entries={journalEntries}
           addEntry={addJournalEntry}
+          goals={goals.map((g) => ({ id: g.id, title: g.title }))}
+          goalsUnlocked={goalsUnlocked}
+        />
+      </>
+    );
+  }
+
+  if (route === "goals") {
+    if (!user || !user.email_confirmed_at) {
+      return (
+        <>
+          <GlobalStyles />
+          <NewLanding
+            onGetStarted={() => setRoute("whatIsInnerCode")}
+            onLogin={() => setRoute("login")}
+          />
+        </>
+      );
+    }
+    return (
+      <>
+        <GlobalStyles />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <Goals
+          onBack={() => setRoute("dashboard")}
+          goals={goals}
+          onSaveGoals={(next) => {
+            refreshUserData();
+          }}
+          onAfterSave={() => refreshUserData()}
+          unlockProgress={goalsUnlockProgress}
+          valueEntries={results?.valueEntries ?? []}
+          completedCategories={completedCategories}
+          categoryScores={categoryScores}
         />
       </>
     );
@@ -2698,7 +2779,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
         <AICoach
           weakAreaSuggestions={results?.weakAreaSuggestions || []}
           valueStrengthSuggestions={results?.valueStrengthSuggestions || []}
@@ -2710,6 +2791,7 @@ export default function App() {
           onboardingAnswers={onboardingAnswers}
           journalSummary={journalSummary}
           recentJournalEntries={recentJournalEntries}
+          goalsSummary={buildGoalsSummary(goals)}
           onBack={() => setRoute("dashboard")}
           onJournal={(prompt, suggestion) => {
             // Navigate to journal with pre-filled prompt
@@ -2737,7 +2819,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
         <JournalCalendar
           entries={journalEntries}
           onBack={() => setRoute("results")}
@@ -2764,10 +2846,11 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
         <Settings
           userName={userName}
           onBack={() => setRoute("dashboard")}
+          onLogout={() => void signOut()}
           onResetOnboarding={() => {
             // Clear onboarding data but keep journals
             safeRemoveItem("innercode_results");
@@ -2830,6 +2913,7 @@ export default function App() {
           onboardingAnswers={onboardingAnswers}
           journalSummary={journalSummary}
           recentJournalEntries={recentJournalEntries}
+          goalsSummary={buildGoalsSummary(goals)}
         />
       </>
     );

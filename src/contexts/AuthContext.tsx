@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { getSupabaseClient, UserProfile } from '../lib/supabase';
-import { fetchSupabaseUserData, SupabaseUserData, EMPTY_SUPABASE_USER_DATA, processOfflineQueue, syncLocalToSupabase, syncSupabaseToLocal } from '../lib/supabaseData';
+import { fetchSupabaseUserData, SupabaseUserData, EMPTY_SUPABASE_USER_DATA, processOfflineQueue, syncLocalToSupabase, syncSupabaseToLocal, getGoalsFromLocalStorage, setGoalsInLocalStorage } from '../lib/supabaseData';
 import { devLog } from '../utils/devLog';
 import { safeGetItem, safeSetItem, safeRemoveItem, getSafeLocalStorage } from '../utils/helpers';
 
@@ -19,6 +19,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, firstName: string, lastName: string, country: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  /** Synchronous clear of all app + Supabase auth data and redirect to /. Use when async signOut may hang. */
+  forceLogoutAndRedirect: () => void;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
@@ -111,6 +113,7 @@ function readLocalSupabaseUserData(): SupabaseUserData | null {
       sparkCompletions,
       checkInHistory: [],
       categoryHistory: [],
+      goals: getGoalsFromLocalStorage(),
     };
   } catch (error) {
     devLog.error('Failed to read local cache for Supabase fallback', error);
@@ -141,10 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         safeRemoveItem('innercode_hasSeenResults');
         safeRemoveItem('innercode_pendingReveal');
         safeRemoveItem('innercode_daily_actions');
+        safeRemoveItem('innercode_goals');
         return;
       }
 
-      const { results, journalEntries, dailyInsights, onboardingState, sparkCompletions } = data;
+      const { results, journalEntries, dailyInsights, onboardingState, sparkCompletions, goals } = data;
 
       // CRITICAL FIX: Only update localStorage if we have data
       // Don't remove existing data if remote is empty (it might not have synced yet)
@@ -185,6 +189,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           safeRemoveItem('innercode_daily_actions');
         }
         // Otherwise, keep local data
+      }
+
+      if (goals && goals.length > 0) {
+        setGoalsInLocalStorage(goals);
       }
 
       if (onboardingState) {
@@ -258,6 +266,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       let data = await fetchSupabaseUserData();
+
+      // Prefer remote goals; fall back to local if remote is empty (e.g. before column exists or offline)
+      data = { ...data, goals: (data.goals?.length ? data.goals : getGoalsFromLocalStorage()) };
 
       const hasRemoteData =
         !!data.results ||
@@ -684,13 +695,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     hasSyncedInitialData.current = false;
     clearPendingVerification();
-    const supabase = await getSupabaseClient();
-    await supabase.auth.signOut();
+    try {
+      const supabase = await getSupabaseClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      devLog.error('Supabase signOut failed', error);
+    } finally {
+      try {
+        setUserProfile(null);
+        setUserData(EMPTY_SUPABASE_USER_DATA);
+        clearCachedUserData();
+
+        const keysToClear = [
+          'innercode_state_v1',
+          'innercode_userName',
+          'innercode_selectedCategories',
+          'innercode_completedCategories',
+          'innercode_categoryScores',
+          'innercode_journal',
+          'innercode_results',
+          'innercode_hasSeenResults',
+          'innercode_daily_insights',
+          'innercode_onboarding_answers_synced_v1',
+          'innercode_onboardingCompletedAt',
+          'innercode_lastActiveRoute',
+          'innercode_pendingVerification',
+          'innercode_goals',
+          'innercode_daily_actions',
+          'innercode_checkins',
+          'innercode_category_history',
+        ];
+        keysToClear.forEach((key) => {
+          try {
+            safeRemoveItem(key);
+          } catch (err) {
+            devLog.error('Failed to clear cached key on sign out', { key, error: err });
+          }
+        });
+
+        // Clear Supabase auth session from localStorage (keys like sb-<project>-auth-token)
+        // so the next page load doesn't restore the session
+        const storage = getSafeLocalStorage();
+        if (storage) {
+          try {
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < storage.length; i++) {
+              const key = storage.key(i);
+              if (key && key.startsWith('sb-')) keysToRemove.push(key);
+            }
+            keysToRemove.forEach((key) => storage.removeItem(key));
+          } catch (err) {
+            devLog.error('Failed to clear Supabase auth keys on sign out', err);
+          }
+        }
+      } catch (err) {
+        devLog.error('Error clearing state on sign out', err);
+      }
+      // Always redirect so the user leaves the app even if something above threw
+      try {
+        window.location.replace(window.location.origin + '/');
+      } catch {
+        window.location.href = '/';
+      }
+    }
+  };
+
+  /** Synchronous: clear state, clear all app + Supabase keys, redirect. Does not await Supabase. */
+  const forceLogoutAndRedirect = useCallback(() => {
+    hasSyncedInitialData.current = false;
+    clearPendingVerification();
     setUserProfile(null);
     setUserData(EMPTY_SUPABASE_USER_DATA);
     clearCachedUserData();
-    
-    // Clear cached data so the next login starts cleanly
+
     const keysToClear = [
       'innercode_state_v1',
       'innercode_userName',
@@ -705,18 +782,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       'innercode_onboardingCompletedAt',
       'innercode_lastActiveRoute',
       'innercode_pendingVerification',
+      'innercode_goals',
+      'innercode_daily_actions',
+      'innercode_checkins',
+      'innercode_category_history',
     ];
     keysToClear.forEach((key) => {
       try {
         safeRemoveItem(key);
-      } catch (error) {
-        devLog.error('Failed to clear cached key on sign out', { key, error });
-      }
+      } catch (_) {}
     });
-    
-    // Redirect to landing page
-    window.location.href = '/';
-  };
+
+    const storage = getSafeLocalStorage();
+    if (storage) {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key && key.startsWith('sb-')) keysToRemove.push(key);
+        }
+        keysToRemove.forEach((key) => storage.removeItem(key));
+      } catch (_) {}
+    }
+
+    try {
+      window.location.replace(window.location.origin + '/');
+    } catch {
+      window.location.href = '/';
+    }
+  }, [clearCachedUserData, clearPendingVerification]);
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user) return;
@@ -744,6 +838,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signIn,
     signOut,
+    forceLogoutAndRedirect,
     updateProfile,
   };
 

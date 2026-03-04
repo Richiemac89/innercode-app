@@ -1,4 +1,4 @@
-import { JournalEntry, Msg, OnboardingAnswer } from "../types";
+import { JournalEntry, Msg, OnboardingAnswer, Goal } from "../types";
 import { analyzeJournalPatterns } from "./journalAnalysis";
 
 export type JournalSnapshotEntry = {
@@ -92,6 +92,17 @@ export function buildJournalSummary(
     summarySegments.push(`Most recent reflection: "${truncate(latestText, 160)}"`);
   }
 
+  const goalReflections = entries
+    .filter((e) => e.goalRef?.goalId)
+    .slice(0, 3)
+    .map((e) => {
+      const snip = e.goalRef?.snippet?.trim();
+      return snip ? `"${truncate(snip, 80)}"` : "(linked to goal)";
+    });
+  if (goalReflections.length > 0) {
+    summarySegments.push("Recent goal reflections: " + goalReflections.join("; "));
+  }
+
   return {
     summaryText: summarySegments.join(" "),
     recentEntries,
@@ -103,5 +114,25 @@ function truncate(text: string, maxLength: number): string {
     return text;
   }
   return `${text.slice(0, maxLength - 1)}…`;
+}
+
+/** Build a short summary of the user's goals for Inny and check-in context. Includes completed status and next step for better conversations. */
+export function buildGoalsSummary(goals: Goal[]): string {
+  if (!Array.isArray(goals) || goals.length === 0) {
+    return "";
+  }
+  const parts = goals.slice(0, 5).map((g) => {
+    const isCompleted = !!g.completedAt;
+    if (isCompleted) {
+      return `${g.title} (${g.relevantValue}, ${g.horizon}, completed)`;
+    }
+    const steps = g.actionSteps || [];
+    const done = steps.filter((s) => s.done).length;
+    const pct = steps.length > 0 ? Math.round((done / steps.length) * 100) : 0;
+    const nextStep = steps.find((s) => !s.done);
+    const nextLabel = nextStep?.label ? `, next: ${truncate(nextStep.label, 30)}` : "";
+    return `${g.title} (${g.relevantValue}, ${g.horizon}, ${pct}%${nextLabel})`;
+  });
+  return "Goals: " + parts.join("; ") + ". Reference their goals when relevant (e.g. progress, next steps). If a goal is completed, you can congratulate; if there's a next step, you can ask about it.";
 }
 
