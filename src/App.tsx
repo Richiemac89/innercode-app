@@ -2851,6 +2851,13 @@ export default function App() {
           userName={userName}
           onBack={() => setRoute("dashboard")}
           onLogout={() => void signOut()}
+          sessionSummaryData={{
+            categoryScores,
+            valueEntries: results?.valueEntries ?? [],
+            journalEntries,
+            sparkCompletions,
+            goals: userData?.goals ?? [],
+          }}
           onResetOnboarding={() => {
             // Clear onboarding data but keep journals
             safeRemoveItem("innercode_results");

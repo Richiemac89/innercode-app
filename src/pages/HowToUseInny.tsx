@@ -86,6 +86,14 @@ export function HowToUseInny({ onBack, onOpenAICoach }: HowToUseInnyProps) {
           </p>
         </div>
 
+        {/* Share with therapist or coach */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>Share with your therapist or coach</h2>
+          <p style={bodyStyle}>
+            If you see a therapist or coach, you can export a session summary (PDF) from Settings and share it with them. The summary includes your life area scores, values, mood trend, sparks completed, and goals—so your conversations can be better informed and focused on what matters to you.
+          </p>
+        </div>
+
         {/* Prompts to try */}
         <div style={sectionStyle}>
           <h2 style={headingStyle}>Prompts to try with Inny</h2>

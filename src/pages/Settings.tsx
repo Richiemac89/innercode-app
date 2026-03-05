@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getSupabaseClient } from "../lib/supabase";
 import { useResetZoom } from "../utils/useResetZoom";
 import { skipDays, resetTime, getDebugInfo, invalidateTimeCaches, isDebugMode } from "../utils/timeDebug";
+import { generateSessionSummaryPdf, type SessionSummaryData } from "../utils/sessionSummaryPdf";
 
 interface SettingsProps {
   onBack: () => void;
@@ -10,6 +11,8 @@ interface SettingsProps {
   onResetOnboarding: () => void;
   onResetAllData: () => void;
   onLogout?: () => void;
+  /** Data for "Export session summary" PDF (life areas, values, mood, sparks, goals). */
+  sessionSummaryData?: SessionSummaryData | null;
 }
 
 type ConfirmDialog = {
@@ -22,6 +25,7 @@ export function Settings({
   onResetOnboarding,
   onResetAllData,
   onLogout,
+  sessionSummaryData = null,
 }: SettingsProps) {
   useResetZoom();
 
@@ -664,6 +668,59 @@ export function Settings({
           >
             💡 Tip: After skipping time, refresh the page to see new insights and sparks!
           </div>
+        </div>
+
+        {/* Export for therapist */}
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: 24,
+            marginBottom: 20,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          }}
+        >
+          <h2
+            style={{
+              margin: "0 0 8px 0",
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#3b3b3b",
+            }}
+          >
+            📄 Export for your therapist
+          </h2>
+          <p
+            style={{
+              margin: "0 0 16px 0",
+              fontSize: 14,
+              color: "#6b6b6b",
+              lineHeight: 1.5,
+            }}
+          >
+            Download a PDF summary of your life area scores, value ranking, mood trend, spark completion and goals (by month) to share with your therapist or coach.
+          </p>
+          <button
+            type="button"
+            onClick={() => sessionSummaryData && generateSessionSummaryPdf(sessionSummaryData)}
+            disabled={!sessionSummaryData}
+            aria-label="Download session summary PDF"
+            style={{
+              padding: "14px 24px",
+              borderRadius: 12,
+              border: "none",
+              background: sessionSummaryData
+                ? "linear-gradient(135deg, #6A3ABF, #8A4EF0)"
+                : "#e5e7eb",
+              color: sessionSummaryData ? "#fff" : "#9ca3af",
+              fontWeight: 600,
+              fontSize: 16,
+              cursor: sessionSummaryData ? "pointer" : "not-allowed",
+              width: "100%",
+            }}
+          >
+            📥 Download session summary (PDF)
+          </button>
         </div>
 
         {/* Account Section - position relative and z-index so logout control is on top */}

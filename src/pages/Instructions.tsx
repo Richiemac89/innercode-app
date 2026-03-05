@@ -35,7 +35,7 @@ const stories: Story[] = [
   {
     emoji: "🧩",
     title: "Your InnerCode Evolves",
-    description: "The only app that ties values, life areas, journaling, and weekly check-ins to one AI coach. Results update with every journal entry; Daily Sparks suggest micro-actions aligned with your values.",
+    description: "The only app that ties values, life areas, journaling, goals, and weekly check-ins to one AI coach. Results update with every journal entry; Daily Sparks suggest micro-actions aligned with your values, and value-aligned goals keep your progress and next steps in one place.",
     animationClass: "puzzle-rotate"
   },
   {
@@ -49,6 +49,12 @@ const stories: Story[] = [
     title: "Your Data, Your Control",
     description: "Your data syncs via Supabase so you can use InnerCode on any device. We can't read your journal or answers—it's stored so your reflections stay private. Inny uses YOUR insights to coach you.",
     animationClass: "lock-bounce"
+  },
+  {
+    emoji: "📄",
+    title: "Share With Your Therapist or Coach",
+    description: "Export a session summary (PDF) from Settings with your life areas, values, mood trend, sparks and goals. Share it with a therapist or coach to give context and support better, more informed conversations.",
+    animationClass: "brain-pulse"
   }
 ];
 
