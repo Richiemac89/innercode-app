@@ -1,12 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSafeLocalStorage } from '../utils/helpers';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
-
 let supabaseClientPromise: Promise<SupabaseClient<any, 'public', any>> | null = null;
 
 async function createSupabaseClient(): Promise<SupabaseClient<any, 'public', any>> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
+    );
+  }
+
   const { createClient } = await import('@supabase/supabase-js');
   const storage = getSafeLocalStorage();
 

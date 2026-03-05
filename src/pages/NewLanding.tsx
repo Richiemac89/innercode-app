@@ -12,11 +12,13 @@ export function NewLanding({ onGetStarted, onLogin }: NewLandingProps) {
   useEffect(() => {
     // Trigger entrance animation after component mounts
     const timer = setTimeout(() => setIsLoaded(true), 100);
-    console.log('NewLanding mounted - checking localStorage:', {
-      hasResults: !!safeGetItem('innercode_results'),
-      hasSeenResults: !!safeGetItem('innercode_hasSeenResults'),
-      hasUserName: !!safeGetItem('innercode_userName'),
-    });
+    if (import.meta.env.DEV) {
+      console.log('NewLanding mounted - checking localStorage:', {
+        hasResults: !!safeGetItem('innercode_results'),
+        hasSeenResults: !!safeGetItem('innercode_hasSeenResults'),
+        hasUserName: !!safeGetItem('innercode_userName'),
+      });
+    }
     return () => clearTimeout(timer);
   }, []);
 
@@ -196,35 +198,37 @@ export function NewLanding({ onGetStarted, onLogin }: NewLandingProps) {
         </button>
 
         {/* Test Reset Button - Only visible in development */}
-        <button
-          onClick={handleTestReset}
-          style={{
-            marginTop: "16px",
-            padding: "12px 24px",
-            borderRadius: "50px",
-            border: "2px solid rgba(106, 58, 191, 0.3)",
-            background: "rgba(167, 139, 250, 0.15)",
-            color: "#6A3ABF",
-            fontWeight: 600,
-            fontSize: "14px",
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            transition: "all 0.3s ease",
-            opacity: isLoaded ? 1 : 0,
-            transform: isLoaded ? "translateY(0)" : "translateY(20px)",
-            transitionDelay: "0.7s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(167, 139, 250, 0.25)";
-            e.currentTarget.style.borderColor = "#6A3ABF";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(167, 139, 250, 0.15)";
-            e.currentTarget.style.borderColor = "rgba(106, 58, 191, 0.3)";
-          }}
-        >
-          🔄 Reset for Testing
-        </button>
+        {import.meta.env.DEV && (
+          <button
+            onClick={handleTestReset}
+            style={{
+              marginTop: "16px",
+              padding: "12px 24px",
+              borderRadius: "50px",
+              border: "2px solid rgba(106, 58, 191, 0.3)",
+              background: "rgba(167, 139, 250, 0.15)",
+              color: "#6A3ABF",
+              fontWeight: 600,
+              fontSize: "14px",
+              cursor: "pointer",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.3s ease",
+              opacity: isLoaded ? 1 : 0,
+              transform: isLoaded ? "translateY(0)" : "translateY(20px)",
+              transitionDelay: "0.7s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(167, 139, 250, 0.25)";
+              e.currentTarget.style.borderColor = "#6A3ABF";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(167, 139, 250, 0.15)";
+              e.currentTarget.style.borderColor = "rgba(106, 58, 191, 0.3)";
+            }}
+          >
+            🔄 Reset for Testing
+          </button>
+        )}
 
         {/* Privacy Note */}
         <p

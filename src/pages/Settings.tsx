@@ -50,7 +50,11 @@ export function Settings({
   const [isUpdating, setIsUpdating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({ type: null });
-  
+  const [dataManagementOpen, setDataManagementOpen] = useState(false);
+  const [profileNameOpen, setProfileNameOpen] = useState(false);
+  const [profileEmailOpen, setProfileEmailOpen] = useState(false);
+  const [profilePasswordOpen, setProfilePasswordOpen] = useState(false);
+
   // Debug time travel states
   const [debugInfo, setDebugInfo] = useState(getDebugInfo());
   const [showDebug, setShowDebug] = useState(isDebugMode());
@@ -222,19 +226,20 @@ export function Settings({
           </div>
         )}
 
-        {/* Profile Settings Section */}
+        {/* Profile Settings – collapsible Name, Email, Password */}
         <div
           style={{
             background: "#fff",
             borderRadius: 16,
-            padding: 24,
             marginBottom: 20,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            overflow: "hidden",
           }}
         >
           <h2
             style={{
-              margin: "0 0 20px 0",
+              margin: 0,
+              padding: "16px 20px",
               fontSize: 20,
               fontWeight: 700,
               color: "#3b3b3b",
@@ -243,432 +248,529 @@ export function Settings({
             👤 Profile Settings
           </h2>
 
-          {/* Name */}
-          <div style={{ marginBottom: 20 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#6b6b6b",
-                marginBottom: 8,
-              }}
-            >
-              Name
-            </label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  fontSize: 16,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  fontSize: 16,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
+          {/* Name – collapsible */}
+          <div style={{ borderTop: "1px solid #e5e7eb" }}>
             <button
-              onClick={handleUpdateName}
-              disabled={isUpdating}
+              type="button"
+              onClick={() => setProfileNameOpen((open) => !open)}
               style={{
-                padding: "10px 20px",
-                borderRadius: 8,
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 20px",
                 border: "none",
-                background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: isUpdating ? "not-allowed" : "pointer",
+                background: "transparent",
+                cursor: "pointer",
                 fontSize: 14,
-                opacity: isUpdating ? 0.6 : 1,
+                color: "#6b7280",
+                textAlign: "left",
               }}
             >
-              {isUpdating ? "Updating..." : "Update Name"}
+              <span>Name</span>
+              <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                {profileNameOpen ? "▲" : "▼"}
+              </span>
             </button>
+            {profileNameOpen && (
+              <div style={{ padding: "0 20px 20px 20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#6b6b6b",
+                    marginBottom: 8,
+                  }}
+                >
+                  Name
+                </label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
+                    style={{
+                      width: "100%",
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      fontSize: 16,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
+                    style={{
+                      width: "100%",
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      fontSize: 16,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleUpdateName}
+                  disabled={isUpdating}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: isUpdating ? "not-allowed" : "pointer",
+                    fontSize: 14,
+                    opacity: isUpdating ? 0.6 : 1,
+                  }}
+                >
+                  {isUpdating ? "Updating..." : "Update Name"}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Email */}
-          <div style={{ marginBottom: 20 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#6b6b6b",
-                marginBottom: 8,
-              }}
-            >
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
+          {/* Email – collapsible */}
+          <div style={{ borderTop: "1px solid #e5e7eb" }}>
+            <button
+              type="button"
+              onClick={() => setProfileEmailOpen((open) => !open)}
               style={{
                 width: "100%",
-                padding: "12px 16px",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                fontSize: 16,
-                marginBottom: 12,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <button
-              onClick={handleUpdateEmail}
-              disabled={isUpdating}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 20px",
                 border: "none",
-                background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: isUpdating ? "not-allowed" : "pointer",
+                background: "transparent",
+                cursor: "pointer",
                 fontSize: 14,
-                opacity: isUpdating ? 0.6 : 1,
+                color: "#6b7280",
+                textAlign: "left",
               }}
             >
-              {isUpdating ? "Updating..." : "Update Email"}
+              <span>Email Address</span>
+              <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                {profileEmailOpen ? "▲" : "▼"}
+              </span>
             </button>
-            <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
-              Note: Changing your email will require verification
-            </p>
+            {profileEmailOpen && (
+              <div style={{ padding: "0 20px 20px 20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#6b6b6b",
+                    marginBottom: 8,
+                  }}
+                >
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 8,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 16,
+                    marginBottom: 12,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={handleUpdateEmail}
+                  disabled={isUpdating}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: isUpdating ? "not-allowed" : "pointer",
+                    fontSize: 14,
+                    opacity: isUpdating ? 0.6 : 1,
+                  }}
+                >
+                  {isUpdating ? "Updating..." : "Update Email"}
+                </button>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>
+                  Note: Changing your email will require verification
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Password */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#6b6b6b",
-                marginBottom: 8,
-              }}
-            >
-              Change Password
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New password"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                fontSize: 16,
-                marginBottom: 12,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                fontSize: 16,
-                marginBottom: 12,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
+          {/* Change Password – collapsible */}
+          <div style={{ borderTop: "1px solid #e5e7eb" }}>
             <button
-              onClick={handleUpdatePassword}
-              disabled={isUpdating}
+              type="button"
+              onClick={() => setProfilePasswordOpen((open) => !open)}
               style={{
-                padding: "10px 20px",
-                borderRadius: 8,
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 20px",
                 border: "none",
-                background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: isUpdating ? "not-allowed" : "pointer",
+                background: "transparent",
+                cursor: "pointer",
                 fontSize: 14,
-                opacity: isUpdating ? 0.6 : 1,
+                color: "#6b7280",
+                textAlign: "left",
               }}
             >
-              {isUpdating ? "Updating..." : "Change Password"}
+              <span>Change Password</span>
+              <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                {profilePasswordOpen ? "▲" : "▼"}
+              </span>
             </button>
+            {profilePasswordOpen && (
+              <div style={{ padding: "0 20px 20px 20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#6b6b6b",
+                    marginBottom: 8,
+                  }}
+                >
+                  Change Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 8,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 16,
+                    marginBottom: 12,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 8,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 16,
+                    marginBottom: 12,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={handleUpdatePassword}
+                  disabled={isUpdating}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: isUpdating ? "not-allowed" : "pointer",
+                    fontSize: 14,
+                    opacity: isUpdating ? 0.6 : 1,
+                  }}
+                >
+                  {isUpdating ? "Updating..." : "Change Password"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Data Management Section */}
+        {/* Data Management – collapsible, muted when expanded */}
         <div
           style={{
             background: "#fff",
             borderRadius: 16,
-            padding: 24,
             marginBottom: 20,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            overflow: "hidden",
           }}
         >
-          <h2
+          <button
+            type="button"
+            onClick={() => setDataManagementOpen((open) => !open)}
             style={{
-              margin: "0 0 20px 0",
-              fontSize: 20,
-              fontWeight: 700,
-              color: "#3b3b3b",
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 14,
+              color: "#6b7280",
+              textAlign: "left",
             }}
           >
-            🗂️ Data Management
-          </h2>
+            <span>🗂️ Data management</span>
+            <span style={{ fontSize: 12, color: "#9ca3af" }}>
+              {dataManagementOpen ? "▲" : "▼"}
+            </span>
+          </button>
 
-          {/* Reset Onboarding */}
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 12,
-              background: "rgba(251,191,36,0.08)",
-              border: "2px solid #fbbf24",
-              marginBottom: 16,
-            }}
-          >
-            <h3
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: 16,
-                fontWeight: 700,
-                color: "#92400e",
-              }}
-            >
-              Reset Onboarding Data
-            </h3>
-            <p
-              style={{
-                fontSize: 14,
-                color: "#78350f",
-                marginBottom: 12,
-                lineHeight: 1.5,
-              }}
-            >
-              This will clear your assessment results and onboarding progress, allowing you to
-              retake the assessment. Your journal entries will be preserved.
-            </p>
-            <button
-              onClick={() => setConfirmDialog({ type: "resetOnboarding" })}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 8,
-                border: "none",
-                background: "#fbbf24",
-                color: "#78350f",
-                fontWeight: 600,
-                cursor: "pointer",
-                fontSize: 14,
-              }}
-            >
-              Reset Onboarding
-            </button>
-          </div>
+          {dataManagementOpen && (
+            <div style={{ padding: "0 16px 16px 16px", borderTop: "1px solid #e5e7eb" }}>
+              {/* Reset Onboarding – muted */}
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  marginTop: 12,
+                }}
+              >
+                <h3
+                  style={{
+                    margin: "0 0 6px 0",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#4b5563",
+                  }}
+                >
+                  Reset onboarding data
+                </h3>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#9ca3af",
+                    marginBottom: 10,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Clears assessment results and onboarding progress so you can retake the assessment. Journal entries are kept.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDialog({ type: "resetOnboarding" })}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                    color: "#6b7280",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  Reset onboarding
+                </button>
+              </div>
 
-          {/* Reset All Data */}
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 12,
-              background: "rgba(239,68,68,0.08)",
-              border: "2px solid #ef4444",
-            }}
-          >
-            <h3
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: 16,
-                fontWeight: 700,
-                color: "#991b1b",
-              }}
-            >
-              Reset All Data
-            </h3>
-            <p
-              style={{
-                fontSize: 14,
-                color: "#7f1d1d",
-                marginBottom: 12,
-                lineHeight: 1.5,
-              }}
-            >
-              This will permanently delete all your data including assessment results, onboarding
-              progress, and journal entries. This action cannot be undone.
-            </p>
-            <button
-              onClick={() => setConfirmDialog({ type: "resetAllData" })}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 8,
-                border: "none",
-                background: "#ef4444",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: "pointer",
-                fontSize: 14,
-              }}
-            >
-              Reset All Data
-            </button>
-          </div>
-        </div>
-
-        {/* 🧪 DEBUG TIME TRAVEL SECTION */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, rgba(251, 146, 60, 0.1), rgba(249, 115, 22, 0.15))",
-            border: "2px dashed #f97316",
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 24 }}>🧪</span>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#ea580c" }}>
-              Debug Time Travel
-            </h3>
-          </div>
-          
-          <p style={{ fontSize: 14, color: "#9a3412", marginBottom: 16, lineHeight: 1.5 }}>
-            Skip forward in time to test Daily Insights, Weekly Check-ins, and other time-based features.
-            <strong> Testing only!</strong>
-          </p>
-
-          {showDebug && (
-            <div
-              style={{
-                background: "rgba(251, 146, 60, 0.1)",
-                borderRadius: 12,
-                padding: 12,
-                marginBottom: 16,
-                fontSize: 13,
-                color: "#7c2d12",
-              }}
-            >
-              <div><strong>Real Time:</strong> {debugInfo.realTime.toLocaleString()}</div>
-              <div><strong>Simulated Time:</strong> {debugInfo.simulatedTime.toLocaleString()}</div>
-              <div><strong>Offset:</strong> {debugInfo.offsetDays} days ({debugInfo.offsetMs}ms)</div>
+              {/* Reset All Data – muted */}
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  marginTop: 10,
+                }}
+              >
+                <h3
+                  style={{
+                    margin: "0 0 6px 0",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#4b5563",
+                  }}
+                >
+                  Reset all data
+                </h3>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#9ca3af",
+                    marginBottom: 10,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Permanently deletes assessment results, onboarding progress, and all journal entries. Cannot be undone.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDialog({ type: "resetAllData" })}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                    color: "#6b7280",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  Reset all data
+                </button>
+              </div>
             </div>
           )}
+        </div>
 
-          <div style={{ display: "grid", gap: 10 }}>
-            <button
-              onClick={() => handleSkipTime(1)}
-              style={{
-                padding: "14px 20px",
-                borderRadius: 12,
-                border: "2px solid #f97316",
-                background: "white",
-                color: "#f97316",
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#f97316";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "white";
-                e.currentTarget.style.color = "#f97316";
-              }}
-            >
-              ⏭️ Skip 1 Day
-            </button>
-
-            <button
-              onClick={() => handleSkipTime(7)}
-              style={{
-                padding: "14px 20px",
-                borderRadius: 12,
-                border: "2px solid #f97316",
-                background: "white",
-                color: "#f97316",
-                fontWeight: 700,
-                fontSize: 15,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#f97316";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "white";
-                e.currentTarget.style.color = "#f97316";
-              }}
-            >
-              ⏭️⏭️ Skip 7 Days (1 Week)
-            </button>
+        {/* 🧪 DEBUG TIME TRAVEL SECTION – dev only */}
+        {import.meta.env.DEV && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(251, 146, 60, 0.1), rgba(249, 115, 22, 0.15))",
+              border: "2px dashed #f97316",
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>🧪</span>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#ea580c" }}>
+                Debug Time Travel
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: 14, color: "#9a3412", marginBottom: 16, lineHeight: 1.5 }}>
+              Skip forward in time to test Daily Insights, Weekly Check-ins, and other time-based features.
+              <strong> Testing only!</strong>
+            </p>
 
             {showDebug && (
+              <div
+                style={{
+                  background: "rgba(251, 146, 60, 0.1)",
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#7c2d12",
+                }}
+              >
+                <div><strong>Real Time:</strong> {debugInfo.realTime.toLocaleString()}</div>
+                <div><strong>Simulated Time:</strong> {debugInfo.simulatedTime.toLocaleString()}</div>
+                <div><strong>Offset:</strong> {debugInfo.offsetDays} days ({debugInfo.offsetMs}ms)</div>
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: 10 }}>
               <button
-                onClick={handleResetTime}
+                onClick={() => handleSkipTime(1)}
                 style={{
                   padding: "14px 20px",
                   borderRadius: 12,
-                  border: "2px solid #dc2626",
+                  border: "2px solid #f97316",
                   background: "white",
-                  color: "#dc2626",
+                  color: "#f97316",
                   fontWeight: 700,
                   fontSize: 15,
                   cursor: "pointer",
                   transition: "all 0.2s",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#dc2626";
+                  e.currentTarget.style.background = "#f97316";
                   e.currentTarget.style.color = "white";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "white";
-                  e.currentTarget.style.color = "#dc2626";
+                  e.currentTarget.style.color = "#f97316";
                 }}
               >
-                🔄 Reset Time to Normal
+                ⏭️ Skip 1 Day
               </button>
-            )}
-          </div>
 
-          <div
-            style={{
-              fontSize: 12,
-              color: "#9a3412",
-              marginTop: 12,
-              fontStyle: "italic",
-            }}
-          >
-            💡 Tip: After skipping time, refresh the page to see new insights and sparks!
+              <button
+                onClick={() => handleSkipTime(7)}
+                style={{
+                  padding: "14px 20px",
+                  borderRadius: 12,
+                  border: "2px solid #f97316",
+                  background: "white",
+                  color: "#f97316",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f97316";
+                  e.currentTarget.style.color = "white";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "white";
+                  e.currentTarget.style.color = "#f97316";
+                }}
+              >
+                ⏭️⏭️ Skip 7 Days (1 Week)
+              </button>
+
+              {showDebug && (
+                <button
+                  onClick={handleResetTime}
+                  style={{
+                    padding: "14px 20px",
+                    borderRadius: 12,
+                    border: "2px solid #dc2626",
+                    background: "white",
+                    color: "#dc2626",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#dc2626";
+                    e.currentTarget.style.color = "white";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "white";
+                    e.currentTarget.style.color = "#dc2626";
+                  }}
+                >
+                  🔄 Reset Time to Normal
+                </button>
+              )}
+            </div>
+
+            <div
+              style={{
+                fontSize: 12,
+                color: "#9a3412",
+                marginTop: 12,
+                fontStyle: "italic",
+              }}
+            >
+              💡 Tip: After skipping time, refresh the page to see new insights and sparks!
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Export for therapist */}
         <div
