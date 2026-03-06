@@ -3,7 +3,7 @@ import { getSupabaseClient } from './supabase';
 import { ResultsData, JournalEntry, DailyInsight, OnboardingAnswer, CheckInEntry, CategoryHistory, Goal } from '../types';
 import { extractOnboardingAnswers } from '../utils/contextBuilders';
 import { devLog } from '../utils/devLog';
-import { safeGetItem, safeSetItem, safeRemoveItem, getSafeLocalStorage } from '../utils/helpers';
+import { safeGetItem, safeSetItem, safeRemoveItem, getSafeLocalStorage, dedupeJournalEntriesByDaySlot } from '../utils/helpers';
 
 export interface SupabaseUserData {
   results: ResultsData | null;
@@ -1113,12 +1113,21 @@ export async function syncLocalToSupabase() {
                 mutated = true;
               }
 
-              await saveJournalEntryToSupabase(normalizedEntry);
               normalized.push(normalizedEntry);
             }
 
+            // One entry per (day, slot): keep latest to avoid duplicates from multiple devices/browsers
+            const deduped = dedupeJournalEntriesByDaySlot(normalized);
+            if (deduped.length !== normalized.length) {
+              mutated = true;
+            }
+
+            for (const entry of deduped) {
+              await saveJournalEntryToSupabase(entry);
+            }
+
             if (mutated) {
-              safeSetItem('innercode_journal', JSON.stringify(normalized));
+              safeSetItem('innercode_journal', JSON.stringify(deduped));
             }
           }
         } catch (error) {
@@ -1266,9 +1275,10 @@ export async function syncSupabaseToLocal() {
           });
         }
 
-        const merged = Array.from(mergedMap.values()).sort((a, b) => b.createdAt - a.createdAt);
+        let merged = Array.from(mergedMap.values()).sort((a, b) => b.createdAt - a.createdAt);
+        merged = dedupeJournalEntriesByDaySlot(merged);
         safeSetItem('innercode_journal', JSON.stringify(merged));
-        devLog.log(`Merged journal entries: ${supabaseJournal.length} from Supabase, ${localJournal.length} local, ${merged.length} total`);
+        devLog.log(`Merged journal entries: ${supabaseJournal.length} from Supabase, ${localJournal.length} local, ${merged.length} total (after day+slot dedupe)`);
       } catch (error) {
         devLog.error('Error merging journal entries from Supabase:', error);
         // Don't overwrite local journal on error - preserve what we have

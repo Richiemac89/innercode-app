@@ -66,9 +66,12 @@ export function HowToUseInny({ onBack, onOpenAICoach }: HowToUseInnyProps) {
 
         {/* Morning and evening journals */}
         <div style={sectionStyle}>
-          <h2 style={headingStyle}>☀️🌙 Morning and evening journals</h2>
+          <h2 style={headingStyle}>Morning and evening journals</h2>
           <p style={bodyStyle}>
             InnerCode offers two journal slots each day: a <strong>morning journal</strong> (intentions, gratitude, how you're structuring your day) and an <strong>evening journal</strong> (reflection on the day, three things that went well). You can complete either or both at any time—they're not locked by clock time. Research suggests morning intention-setting and evening reflection can support mood and clarity. Both sync to Inny so she sees your morning mood and intentions and your evening reflections, giving her fuller context to tailor her replies.
+          </p>
+          <p style={{ ...bodyStyle, marginTop: 12 }}>
+            Your journal syncs across devices. We keep one morning and one evening entry per day; if you add from more than one place, the latest is kept.
           </p>
         </div>
 

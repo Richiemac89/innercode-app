@@ -1,9 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { writeFileSync } from 'fs'
+import { join } from 'path'
+
+// Plugin: inject build id at build time and write version.json for "new version" check
+function buildIdPlugin() {
+  let buildId: string
+  return {
+    name: 'build-id',
+    config() {
+      buildId = String(Date.now())
+      return { define: { __APP_BUILD_ID__: JSON.stringify(buildId) } }
+    },
+    writeBundle(outputOptions: { dir?: string }) {
+      const outDir = outputOptions.dir ?? 'dist'
+      try {
+        writeFileSync(join(outDir, 'version.json'), JSON.stringify({ buildId }))
+      } catch (_e) {
+        // ignore if dist not writable
+      }
+    },
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), buildIdPlugin()],
   
   server: {
     host: '0.0.0.0', // Bind to all network interfaces for mobile testing

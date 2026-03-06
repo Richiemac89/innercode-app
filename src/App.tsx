@@ -36,6 +36,8 @@ import {
   safeGetItem,
   safeSetItem,
   safeRemoveItem,
+  dedupeJournalEntriesByDaySlot,
+  journalDaySlotKey,
 } from "./utils/helpers";
 import { reflectAnswer } from "./utils/valueDetection";
 import { computeResults } from "./utils/results";
@@ -883,8 +885,9 @@ export default function App() {
         }
       });
 
-      const merged = Array.from(mergedMap.values()).sort((a, b) => b.createdAt - a.createdAt);
-      
+      let merged = Array.from(mergedMap.values()).sort((a, b) => b.createdAt - a.createdAt);
+      merged = dedupeJournalEntriesByDaySlot(merged);
+
       if (merged.length > 0) {
         setJournalEntries(merged);
         storage?.setItem('innercode_journal', JSON.stringify(merged));
@@ -908,7 +911,8 @@ export default function App() {
         try {
           const parsed = JSON.parse(finalCheck);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setJournalEntries(parsed);
+            const deduped = dedupeJournalEntriesByDaySlot(parsed);
+            setJournalEntries(deduped);
             devLog.log('Recovered journal entries from localStorage on final check');
           }
         } catch (e) {
@@ -1199,7 +1203,12 @@ export default function App() {
       if (duplicate) {
         return prev;
       }
-      const updated = [entry, ...prev];
+      // One entry per (day, slot): replace any existing same day+slot so multi-device stays deduped
+      const entrySlotKey = journalDaySlotKey(entry.createdAt, entry.slot);
+      const filtered = prev.filter(
+        (existing) => journalDaySlotKey(existing.createdAt, existing.slot) !== entrySlotKey
+      );
+      const updated = [entry, ...filtered];
 
       // Recompute results with journal entries included
       if (results) {

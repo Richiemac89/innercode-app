@@ -14,6 +14,24 @@ export function dayKeyFromTs(ts: number) {
   return `${y}-${m}-${dd}`;
 }
 
+/** Key for one journal slot per day: "YYYY-MM-DD:morning" or "...:evening". Used to dedupe across devices. */
+export function journalDaySlotKey(createdAt: number, slot?: string | null): string {
+  return `${dayKeyFromTs(createdAt)}:${slot === "morning" ? "morning" : "evening"}`;
+}
+
+/** Keep at most one entry per (day, slot), the one with the latest createdAt. */
+export function dedupeJournalEntriesByDaySlot<T extends { createdAt: number; slot?: string | null }>(
+  entries: T[]
+): T[] {
+  const byKey = new Map<string, T>();
+  for (const e of entries) {
+    const key = journalDaySlotKey(e.createdAt, e.slot);
+    const existing = byKey.get(key);
+    if (!existing || e.createdAt > existing.createdAt) byKey.set(key, e);
+  }
+  return Array.from(byKey.values()).sort((a, b) => b.createdAt - a.createdAt);
+}
+
 // Shorten body text for cards
 export function snippet(s: string, n = 12) {
   const w = (s || "").trim().split(/\s+/);
