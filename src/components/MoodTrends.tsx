@@ -22,22 +22,34 @@ function getMoodScore(mood: string | undefined): number {
 function getWeeklyMoodData(entries: JournalEntry[]): { date: string; score: number; emoji: string }[] {
   const today = new Date();
   const weekData: { date: string; score: number; emoji: string }[] = [];
-  
+
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     date.setHours(0, 0, 0, 0);
-    
+
     const dayKey = dayKeyFromTs(date.getTime());
-    const dayEntry = entries.find(e => dayKeyFromTs(e.createdAt) === dayKey);
-    
-    const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
-    const score = dayEntry ? getMoodScore(dayEntry.mood) : 0;
-    const emoji = dayEntry?.mood || "";
-    
+    const dayEntries = entries.filter((e) => dayKeyFromTs(e.createdAt) === dayKey);
+    const morningEntry = dayEntries.find((e) => e.slot === "morning");
+    const eveningEntry = dayEntries.find((e) => e.slot === "evening" || e.slot == null);
+
+    const weekday = date.toLocaleDateString("en-US", { weekday: "short" });
+    const scores: number[] = [];
+    const emojis: string[] = [];
+    if (morningEntry?.mood) {
+      scores.push(getMoodScore(morningEntry.mood));
+      emojis.push("☀️" + morningEntry.mood);
+    }
+    if (eveningEntry?.mood) {
+      scores.push(getMoodScore(eveningEntry.mood));
+      emojis.push("🌙" + eveningEntry.mood);
+    }
+    const score = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const emoji = emojis.length > 0 ? emojis.join(" ") : "";
+
     weekData.push({ date: weekday, score, emoji });
   }
-  
+
   return weekData;
 }
 
@@ -58,6 +70,13 @@ export function MoodTrends({ entries }: MoodTrendsProps) {
   const maxScore = 5;
   const hasData = weekData.some(d => d.score > 0);
 
+  // Reactive emoji strip: 2 lines when any day has morning+evening (emoji contains space)
+  const needsTwoLines = hasData && weekData.some(d => d.emoji && d.emoji.includes(" "));
+  const emojiStripHeight = needsTwoLines ? 52 : 28;
+  const barMaxHeight = 140;
+  const dayLabelHeight = 24;
+  const chartHeight = emojiStripHeight + barMaxHeight + dayLabelHeight;
+
   return (
     <div
       style={{
@@ -68,7 +87,7 @@ export function MoodTrends({ entries }: MoodTrendsProps) {
         border: "1px solid #e5e7eb",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
         <span style={{ fontSize: 24 }}>📈</span>
         <h3 style={{ margin: 0, fontSize: 18 }}>Mood Trends (Last 7 Days)</h3>
       </div>
@@ -80,15 +99,14 @@ export function MoodTrends({ entries }: MoodTrendsProps) {
         </div>
       ) : (
         <>
-          {/* Bar Chart */}
+          {/* Bar Chart: reactive height = emoji strip + bars + labels */}
           <div
             style={{
               display: "flex",
-              alignItems: "flex-end",
+              alignItems: "stretch",
               gap: 8,
-              height: 180,
+              height: chartHeight,
               marginBottom: 16,
-              padding: "10px 0",
             }}
           >
             {weekData.map((day, i) => (
@@ -99,34 +117,70 @@ export function MoodTrends({ entries }: MoodTrendsProps) {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 6,
+                  minWidth: 0,
                 }}
               >
-                {/* Emoji if present */}
-                {day.emoji && (
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>
-                    {day.emoji}
-                  </div>
-                )}
-                {/* Bar */}
+                {/* Emoji strip: full column width so content centers over bar */}
                 <div
                   style={{
-                    width: "100%",
-                    height: day.score > 0 ? `${(day.score / maxScore) * 140}px` : "10px",
-                    background: day.score > 0
-                      ? day.score >= 4
-                        ? "linear-gradient(180deg, #10b981, #059669)"
-                        : day.score === 3
-                        ? "linear-gradient(180deg, #f59e0b, #d97706)"
-                        : "linear-gradient(180deg, #ef4444, #dc2626)"
-                      : "#e5e7eb",
-                    borderRadius: "8px 8px 0 0",
-                    transition: "all 0.3s ease",
+                    height: emojiStripHeight,
+                    alignSelf: "stretch",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    fontSize: 20,
+                    gap: 2,
+                    textAlign: "center",
                   }}
-                />
+                >
+                  {day.emoji ? (
+                    day.emoji.includes(" ") ? (
+                      day.emoji.split(" ").map((part, j) => (
+                        <span key={j} style={{ display: "block" }}>{part}</span>
+                      ))
+                    ) : (
+                      <span>{day.emoji}</span>
+                    )
+                  ) : null}
+                </div>
+                {/* Bar area: full column width, bar aligned to bottom */}
+                <div
+                  style={{
+                    height: barMaxHeight,
+                    alignSelf: "stretch",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      height: day.score > 0 ? `${(day.score / maxScore) * barMaxHeight}px` : "10px",
+                      background: day.score > 0
+                        ? day.score >= 4
+                          ? "linear-gradient(180deg, #10b981, #059669)"
+                          : day.score === 3
+                          ? "linear-gradient(180deg, #f59e0b, #d97706)"
+                          : "linear-gradient(180deg, #ef4444, #dc2626)"
+                        : "#e5e7eb",
+                      borderRadius: "8px 8px 0 0",
+                      transition: "all 0.3s ease",
+                    }}
+                  />
+                </div>
                 {/* Day label */}
                 <div
                   style={{
+                    height: dayLabelHeight,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
                     fontSize: 11,
                     color: "#6b6b6b",
                     fontWeight: 600,

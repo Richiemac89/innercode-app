@@ -17,7 +17,7 @@ import { devLog } from "../utils/devLog";
 
 interface DashboardProps {
   onViewResults: () => void;
-  onJournal: () => void;
+  onJournal: (slot?: 'morning' | 'evening') => void;
   onAICoach?: () => void;
   onHowItWorks?: () => void;
   onHowToUseInny?: () => void;
@@ -207,6 +207,7 @@ export function Dashboard({
 
   // Quote rotation state - moved here to ensure all useState hooks come before useEffect/useMemo
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
+  const [journalExpanded, setJournalExpanded] = useState(false);
 
   useEffect(() => {
     // ALWAYS load from localStorage first (source of truth)
@@ -959,7 +960,9 @@ export function Dashboard({
             <button
               onClick={onAICoach}
               style={{
-                padding: "18px 24px",
+                height: 60,
+                boxSizing: "border-box",
+                padding: "0 24px",
                 borderRadius: 16,
                 border: "none",
                 background: "linear-gradient(135deg,#8B5CF6,#7C3AED)",
@@ -979,32 +982,95 @@ export function Dashboard({
           )}
 
           {hasCompletedOnboarding && (
-            <button
-              onClick={onJournal}
+            <div
               style={{
-                padding: "18px 24px",
-                borderRadius: 16,
+                minHeight: 60,
+                boxSizing: "border-box",
                 border: "2px solid #8B5CF6",
+                borderRadius: 16,
                 background: "#fff",
-                color: "#8B5CF6",
-                fontWeight: 700,
-                fontSize: 18,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
+                overflow: "hidden",
               }}
             >
-              📓 Journal now
-            </button>
+              <button
+                type="button"
+                onClick={() => setJournalExpanded((e) => !e)}
+                style={{
+                  width: "100%",
+                  height: 56,
+                  padding: "0 24px",
+                  border: "none",
+                  background: "transparent",
+                  color: "#8B5CF6",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  position: "relative",
+                  boxSizing: "border-box",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>📓 Journal</span>
+                <span style={{ position: "absolute", right: 16, fontSize: 14 }}>{journalExpanded ? "▲" : "▼"}</span>
+              </button>
+              {journalExpanded && (
+                <div style={{ display: "grid", gap: 8, padding: "0 16px 16px 16px" }}>
+                  <button
+                    type="button"
+                    onClick={() => onJournal("morning")}
+                    style={{
+                      padding: "14px 20px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(139,92,246,0.3)",
+                      background: "rgba(255,243,205,0.5)",
+                      color: "#92400e",
+                      fontWeight: 700,
+                      fontSize: 16,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    ☀️ Morning journal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onJournal("evening")}
+                    style={{
+                      padding: "14px 20px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(139,92,246,0.3)",
+                      background: "rgba(224,231,255,0.5)",
+                      color: "#3730a3",
+                      fontWeight: 700,
+                      fontSize: 16,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    🌙 Evening journal
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {hasCompletedOnboarding && (
             <button
               onClick={onViewResults}
               style={{
-                padding: "18px 24px",
+                height: 60,
+                boxSizing: "border-box",
+                padding: "0 24px",
                 borderRadius: 16,
                 border: "2px solid #8B5CF6",
                 background: "#fff",
@@ -1022,48 +1088,65 @@ export function Dashboard({
             </button>
           )}
 
-          {onHowItWorks && (
-            <button
-              onClick={onHowItWorks}
-              style={{
-                padding: "14px 20px",
-                borderRadius: 16,
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                color: "#6b6b6b",
-                fontWeight: 600,
-                fontSize: 16,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-              }}
-            >
-              ℹ️ How InnerCode Works
-            </button>
-          )}
-
-          {onHowToUseInny && (
-            <button
-              onClick={onHowToUseInny}
-              style={{
-                padding: "14px 20px",
-                borderRadius: 16,
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                color: "#6b6b6b",
-                fontWeight: 600,
-                fontSize: 16,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-              }}
-            >
-              🤖 How to use InnerCode and Inny
-            </button>
+          {(onHowItWorks || onHowToUseInny) && (
+            <div style={{ display: "flex", gap: 12 }}>
+              {onHowItWorks && (
+                <button
+                  onClick={onHowItWorks}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: 72,
+                    boxSizing: "border-box",
+                    padding: "18px 16px",
+                    borderRadius: 16,
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                    color: "#6b6b6b",
+                    fontWeight: 600,
+                    fontSize: 16,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ lineHeight: 1 }}>ℹ️</span>
+                    <span>How InnerCode Works</span>
+                  </span>
+                </button>
+              )}
+              {onHowToUseInny && (
+                <button
+                  onClick={onHowToUseInny}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: 72,
+                    boxSizing: "border-box",
+                    padding: "18px 16px",
+                    borderRadius: 16,
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                    color: "#6b6b6b",
+                    fontWeight: 600,
+                    fontSize: 16,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ lineHeight: 1 }}>🤖</span>
+                    <span>How to use Inny</span>
+                  </span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

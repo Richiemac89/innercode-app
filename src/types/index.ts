@@ -39,18 +39,25 @@ export type Prompt = {
   phase?: 1 | 2 | 3; // Phase 1: Foundation, Phase 2: Exploration, Phase 3: Mastery
 };
 
+/** Morning or evening journal slot. Omit = treat as evening (backward compat). */
+export type JournalSlot = 'morning' | 'evening';
+
 export type JournalEntry = {
   id: string;
   text: string;
   categories: string[];
   values: string[];
   gratitude: string[];
+  /** Evening journal: "3 things that went well today". Morning uses gratitude. */
+  wentWell?: string[];
   mood?: string;
   suggestionRef?: string;
   /** Optional link to a goal when this entry reflects on that goal */
   goalRef?: { goalId: string; snippet?: string };
   createdAt: number;
   category?: string; // legacy back-compat
+  /** Morning (☀️) or evening (🌙). Omit = evening. */
+  slot?: JournalSlot;
 };
 
 export interface OnboardingAnswer {

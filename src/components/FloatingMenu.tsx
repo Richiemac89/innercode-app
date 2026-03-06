@@ -5,20 +5,24 @@ import { getSafeLocalStorage } from "../utils/helpers";
 
 type UserState = "first-time" | "in-progress" | "completed";
 
-export function FloatingMenu({ 
+export function FloatingMenu({
   onNav,
   onLogout,
   goalsUnlocked = false,
-}: { 
+  onJournalWithSlot,
+}: {
   onNav: (route: Route) => void;
   onLogout?: () => void;
   goalsUnlocked?: boolean;
+  /** When user picks Morning or Evening journal from the menu */
+  onJournalWithSlot?: (slot: 'morning' | 'evening') => void;
 }) {
   const { userData, syncComplete } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userState, setUserState] = useState<UserState>("first-time");
   const [showLockedTooltip, setShowLockedTooltip] = useState<string | null>(null);
   const [showGoalsUnlockInfo, setShowGoalsUnlockInfo] = useState(false);
+  const [journalExpanded, setJournalExpanded] = useState(false);
 
   // CRITICAL FIX: Use useEffect instead of useMemo since we're setting state
   // Also check both userData and local storage to prevent false "in-progress" state during refresh
@@ -243,7 +247,87 @@ export function FloatingMenu({
 
                 return items;
               })().map((it) => {
+                const isJournal = it.r === "journal";
                 const isGoalsLocked = it.r === "goals" && it.locked;
+
+                if (isJournal && onJournalWithSlot) {
+                  return (
+                    <div key="journal" style={{ marginBottom: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (it.locked) return;
+                          setJournalExpanded((e) => !e);
+                        }}
+                        disabled={it.locked}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "12px 16px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: "transparent",
+                          cursor: it.locked ? "not-allowed" : "pointer",
+                          opacity: it.locked ? 0.5 : 1,
+                          color: it.locked ? "rgba(255, 255, 255, 0.4)" : "#ffffff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          fontSize: 16,
+                          fontWeight: 500,
+                        }}
+                      >
+                        <span>{it.label}</span>
+                        <span style={{ fontSize: 12 }}>{journalExpanded ? "▲" : "▼"}</span>
+                      </button>
+                      {journalExpanded && !it.locked && (
+                        <div style={{ paddingLeft: 12, marginTop: 4, display: "flex", flexDirection: "column", gap: 4 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                              setSidebarOpen(false);
+                              onJournalWithSlot("morning");
+                            }}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: 8,
+                              border: "none",
+                              background: "rgba(255, 255, 255, 0.1)",
+                              color: "#fff",
+                              fontSize: 14,
+                              textAlign: "left",
+                              cursor: "pointer",
+                            }}
+                          >
+                            ☀️ Morning
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                              setSidebarOpen(false);
+                              onJournalWithSlot("evening");
+                            }}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: 8,
+                              border: "none",
+                              background: "rgba(255, 255, 255, 0.1)",
+                              color: "#fff",
+                              fontSize: 14,
+                              textAlign: "left",
+                              cursor: "pointer",
+                            }}
+                          >
+                            🌙 Evening
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={it.r}
@@ -257,18 +341,9 @@ export function FloatingMenu({
                     <button
                       onClick={() => {
                         if (it.locked) return;
-
-                        // Blur any active input before navigation to trigger zoom-out
-                        if (document.activeElement instanceof HTMLElement) {
-                          document.activeElement.blur();
-                        }
-
+                        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
                         setSidebarOpen(false);
-
-                        // Delay to allow blur to take effect and zoom to reset
-                        setTimeout(() => {
-                          onNav(it.r as Route);
-                        }, 100);
+                        setTimeout(() => onNav(it.r as Route), 100);
                       }}
                       disabled={it.locked}
                       style={{
@@ -289,13 +364,9 @@ export function FloatingMenu({
                         transition: "background-color 0.2s",
                       }}
                       onMouseEnter={(e) => {
-                        if (!it.locked) {
-                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-                        }
+                        if (!it.locked) e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
                       }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                     >
                       <span>{it.label}</span>
                       {it.locked && <span style={{ fontSize: 14 }}>🔒</span>}
@@ -304,10 +375,7 @@ export function FloatingMenu({
                       <button
                         type="button"
                         aria-label="How to unlock Goals"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowGoalsUnlockInfo(true);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setShowGoalsUnlockInfo(true); }}
                         style={{
                           flexShrink: 0,
                           background: "rgba(255, 255, 255, 0.15)",
@@ -321,15 +389,6 @@ export function FloatingMenu({
                           cursor: "pointer",
                           fontSize: 12,
                           color: "#ffffff",
-                          transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.25)";
-                          e.currentTarget.style.transform = "scale(1.1)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
-                          e.currentTarget.style.transform = "scale(1)";
                         }}
                       >
                         ℹ️

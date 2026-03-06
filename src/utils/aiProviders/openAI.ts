@@ -132,7 +132,14 @@ async function invokeInnyChat(payload: {
 }
 
 function formatRecentJournalEntries(
-  entries?: Array<{ text: string; createdAt: number; mood?: string }>
+  entries?: Array<{
+    text: string;
+    createdAt: number;
+    mood?: string;
+    slot?: string;
+    gratitude?: string[];
+    wentWell?: string[];
+  }>
 ): string {
   if (!entries || entries.length === 0) {
     return "";
@@ -145,10 +152,20 @@ function formatRecentJournalEntries(
       const dateLabel = Number.isNaN(date.getTime())
         ? "Recent"
         : date.toLocaleDateString();
+      const slotLabel = entry.slot === "morning" ? "Morning" : entry.slot === "evening" ? "Evening" : "";
+      const prefix = slotLabel ? `[${slotLabel}] ` : "";
       const moodPart = entry.mood ? ` Mood: ${entry.mood}.` : "";
+      const gratitudePart =
+        entry.gratitude && entry.gratitude.length > 0
+          ? ` Grateful for: ${entry.gratitude.filter(Boolean).join(", ")}.`
+          : "";
+      const wentWellPart =
+        entry.wentWell && entry.wentWell.length > 0
+          ? ` Went well: ${entry.wentWell.filter(Boolean).join(", ")}.`
+          : "";
       const text = entry.text || "";
       const snippet = text.length > 200 ? `${text.slice(0, 197)}…` : text;
-      return `${dateLabel}.${moodPart} ${snippet}`.trim();
+      return `${prefix}${dateLabel}.${moodPart}${gratitudePart}${wentWellPart} ${snippet}`.trim();
     })
     .join(" | ");
 }

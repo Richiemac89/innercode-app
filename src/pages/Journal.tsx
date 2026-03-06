@@ -1,9 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FilterChip } from "../components/FilterChip";
 import { Celebration } from "../components/Celebration";
-import { JournalEntry } from "../types";
+import { JournalEntry, type JournalSlot } from "../types";
 import { has, dayKeyFromTs, getCurrentTime } from "../utils/helpers";
 import { useResetZoom } from "../utils/useResetZoom";
+
+function getDefaultSlot(): JournalSlot {
+  const hour = new Date().getHours();
+  return hour < 12 ? "morning" : "evening";
+}
 
 function calculateStreak(entries: JournalEntry[]): number {
   if (entries.length === 0) return 0;
@@ -44,6 +49,8 @@ interface JournalProps {
   /** When goals are unlocked and user has goals, show optional goal reflection */
   goals?: Array<{ id: string; title: string }>;
   goalsUnlocked?: boolean;
+  /** Open on morning or evening tab (default: by time of day) */
+  initialSlot?: JournalSlot;
 }
 
 export function Journal({
@@ -57,11 +64,15 @@ export function Journal({
   userName,
   goals = [],
   goalsUnlocked = false,
+  initialSlot,
 }: JournalProps) {
+  /** Fixed for this screen: morning or evening, no in-page toggle */
+  const slot: JournalSlot = initialSlot ?? getDefaultSlot();
   const [text, setText] = useState("");
   const [cats, setCats] = useState<string[]>([]);
   const [vals, setVals] = useState<string[]>([]);
   const [grat, setGrat] = useState<string[]>(["", "", ""]);
+  const [wentWell, setWentWell] = useState<string[]>(["", "", ""]);
   const [mood, setMood] = useState<string | undefined>(undefined);
   const [saved, setSaved] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -69,11 +80,28 @@ export function Journal({
   const [goalRefGoalId, setGoalRefGoalId] = useState<string>("");
   const [goalReflectionSnippet, setGoalReflectionSnippet] = useState("");
   const [goalReflectionExpanded, setGoalReflectionExpanded] = useState(false);
+  /** Slot we just saved this session — locks immediately before entries prop updates */
+  const [savedSlot, setSavedSlot] = useState<JournalSlot | null>(null);
+  /** Prevents double-submit (e.g. double-click or Strict Mode) from creating duplicate entries */
+  const savingRef = useRef(false);
 
   const todayKey = dayKeyFromTs(getCurrentTime());
-  const hasToday = entries.some((e) => dayKeyFromTs(e.createdAt) === todayKey);
-  const locked = hasToday || saved;
+  const hasMorningToday = entries.some(
+    (e) => dayKeyFromTs(e.createdAt) === todayKey && e.slot === "morning"
+  );
+  const hasEveningToday = entries.some(
+    (e) => dayKeyFromTs(e.createdAt) === todayKey && (e.slot === "evening" || e.slot == null)
+  );
+  const locked =
+    (slot === "morning" ? hasMorningToday : hasEveningToday) || savedSlot === slot;
   const streak = calculateStreak(entries);
+
+  // Clear savedSlot once entries prop includes the saved entry (avoids redundant state)
+  useEffect(() => {
+    if (!savedSlot) return;
+    if (savedSlot === "morning" && hasMorningToday) setSavedSlot(null);
+    if (savedSlot === "evening" && hasEveningToday) setSavedSlot(null);
+  }, [savedSlot, hasMorningToday, hasEveningToday]);
 
   // Reset zoom and scroll to top when component mounts
   useResetZoom();
@@ -90,15 +118,26 @@ export function Journal({
   }
   function save() {
     if (!text.trim() || locked) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
+    // #region agent log
+    try {
+      fetch('http://127.0.0.1:7364/ingest/30a0ac4f-5fce-458c-b200-f87651f3e5d6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a90958'},body:JSON.stringify({sessionId:'a90958',runId:'journal-save',hypothesisId:'A_C_E',location:'Journal.tsx:save()',message:'save() invoked',data:{slot,textLen:text.trim().length,ts:Date.now()},timestamp:Date.now()})}).catch(()=>{});
+    } catch (_) {}
+    // #endregion
+    const isMorning = slot === "morning";
     addEntry({
       text: text.trim(),
       categories: cats,
       values: vals,
-      gratitude: grat.filter(Boolean),
+      gratitude: isMorning ? grat.filter(Boolean) : [],
+      wentWell: !isMorning ? wentWell.filter(Boolean) : undefined,
       mood,
+      slot: slot,
       goalRef: goalRefGoalId ? { goalId: goalRefGoalId, snippet: goalReflectionSnippet.trim() || undefined } : undefined,
     });
     setSaved(true);
+    setSavedSlot(slot);
 
     // Check for milestones and show celebration
     const newStreak = calculateStreak([
@@ -108,8 +147,10 @@ export function Journal({
         text: text.trim(),
         categories: cats,
         values: vals,
-        gratitude: grat.filter(Boolean),
+        gratitude: isMorning ? grat.filter(Boolean) : [],
+        wentWell: !isMorning ? wentWell.filter(Boolean) : undefined,
         mood,
+        slot,
       },
       ...entries,
     ]);
@@ -140,6 +181,9 @@ export function Journal({
     }
     // Always show celebration
     setShowCelebration(true);
+    setTimeout(() => {
+      savingRef.current = false;
+    }, 500);
   }
 
   return (
@@ -154,32 +198,26 @@ export function Journal({
         style={{
           minHeight: "100vh",
           background:
-            "linear-gradient(135deg, rgba(167,139,250,0.12), rgba(16,185,129,0.10))",
+            slot === "morning"
+              ? "linear-gradient(135deg, #fafbff 0%, #f0f4ff 50%, #e8eeff 100%)"
+              : "linear-gradient(135deg, #ebe8f5 0%, #e2deef 50%, #d9d4e8 100%)",
         }}
       >
         <div className="page" style={{ paddingTop: "70px" }}>
-        {/* Welcome Header */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>📓</div>
-          <h1
+        {/* Header: emoji + slot label only (no time-based greeting) */}
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>
+            {slot === "morning" ? "☀️" : "🌙"}
+          </div>
+          <p
             style={{
               margin: 0,
-              fontSize: 32,
-              fontWeight: 800,
+              fontSize: 22,
+              fontWeight: 700,
               color: "#3b3b3b",
             }}
           >
-            {(() => {
-              const hour = new Date().getHours();
-              const greeting = 
-                hour < 12 ? "Good morning" :
-                hour < 18 ? "Good afternoon" :
-                "Good evening";
-              return greeting;
-            })()}{userName ? `, ${userName}` : ''}!
-          </h1>
-          <p style={{ color: "#6b6b6b", fontSize: 16, marginTop: 8 }}>
-            Reflect on your journey
+            {slot === "morning" ? "Morning journal" : "Evening journal"}
           </p>
         </div>
 
@@ -262,7 +300,7 @@ export function Journal({
             journal again.
           </div>
         )}
-        {hasToday && !saved && (
+        {(hasMorningToday && slot === "morning") || (hasEveningToday && slot === "evening") ? (
           <div
             className="fadeInUp"
             style={{
@@ -274,10 +312,9 @@ export function Journal({
               marginBottom: 10,
             }}
           >
-            You've already added an entry today. New entries unlock at midnight
-            (your local time).
+            You've already added an {slot} entry today. You can add the other slot or come back tomorrow.
           </div>
-        )}
+        ) : null}
 
         {/* Composer */}
         <div
@@ -287,7 +324,11 @@ export function Journal({
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Reflect on your day. Did you do any of the suggested activities? How did you get on?"
+            placeholder={
+              slot === "morning"
+                ? "Write what comes to mind. How are you structuring your day? Anything you're looking forward to?"
+                : "Reflect on your day. Did you do any of the suggested activities? How did you get on?"
+            }
             rows={10}
             style={{
               width: "100%",
@@ -368,7 +409,7 @@ export function Journal({
             </div>
           </div>
 
-          {/* Gratitude */}
+          {/* Morning: Gratitude. Evening: 3 things that went well */}
           <div>
             <div
               style={{
@@ -378,24 +419,31 @@ export function Journal({
                 marginBottom: 6,
               }}
             >
-              <span style={{ fontSize: 20 }}>🌤️</span>
-              <strong>Gratitude</strong>
+              <span style={{ fontSize: 20 }}>{slot === "morning" ? "🌤️" : "✨"}</span>
+              <strong>{slot === "morning" ? "3 things you're grateful for" : "3 things that went well today"}</strong>
             </div>
             <div style={{ color: "#4b4b4b", fontSize: 14, marginBottom: 8 }}>
-              Regular gratitude builds attention for what's working. Name three
-              specifics from today.
+              {slot === "morning"
+                ? "Start the day with gratitude. Name three specifics."
+                : "End the day by noting what went well."}
             </div>
             <div style={{ display: "grid", gap: 8 }}>
               {[0, 1, 2].map((i) => (
                 <input
                   key={i}
                   placeholder={`${i + 1}) …`}
-                  value={grat[i]}
+                  value={slot === "morning" ? grat[i] : wentWell[i]}
                   disabled={locked}
                   onChange={(e) => {
-                    const n = [...grat];
-                    n[i] = e.target.value;
-                    setGrat(n);
+                    if (slot === "morning") {
+                      const n = [...grat];
+                      n[i] = e.target.value;
+                      setGrat(n);
+                    } else {
+                      const n = [...wentWell];
+                      n[i] = e.target.value;
+                      setWentWell(n);
+                    }
                   }}
                   style={{
                     border: "2px solid rgba(106, 58, 191, 0.2)",

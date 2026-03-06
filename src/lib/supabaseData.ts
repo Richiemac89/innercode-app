@@ -268,7 +268,7 @@ export async function saveJournalEntryToSupabase(entry: JournalEntry, options: {
         return { error: 'Not authenticated' };
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...(isUuid(entry.id) ? { id: entry.id } : {}),
         user_id: user.id,
         text: entry.text,
@@ -279,6 +279,8 @@ export async function saveJournalEntryToSupabase(entry: JournalEntry, options: {
         suggestion_ref: entry.suggestionRef,
         created_at: new Date(entry.createdAt).toISOString(),
       };
+      if (entry.slot) payload.slot = entry.slot;
+      if (entry.wentWell != null) payload.went_well = entry.wentWell;
 
       const { error } = await supabase
         .from('journal_entries')
@@ -317,15 +319,17 @@ export async function loadJournalEntriesFromSupabase(): Promise<JournalEntry[]> 
 
       if (!data) return [];
 
-      const entries: JournalEntry[] = data.map(entry => ({
-        id: entry.id,
-        text: entry.text,
-        categories: entry.categories || [],
-        values: entry.values || [],
-        gratitude: entry.gratitude || [],
-        mood: entry.mood,
-        suggestionRef: entry.suggestion_ref,
-        createdAt: new Date(entry.created_at).getTime(),
+      const entries: JournalEntry[] = data.map((entry: Record<string, unknown>) => ({
+        id: entry.id as string,
+        text: entry.text as string,
+        categories: (entry.categories as string[]) || [],
+        values: (entry.values as string[]) || [],
+        gratitude: (entry.gratitude as string[]) || [],
+        wentWell: entry.went_well != null ? (entry.went_well as string[]) : undefined,
+        mood: entry.mood as string | undefined,
+        suggestionRef: entry.suggestion_ref as string | undefined,
+        slot: (entry.slot as 'morning' | 'evening' | null) || undefined,
+        createdAt: new Date(entry.created_at as string).getTime(),
       }));
 
       devLog.log(`Loaded ${entries.length} journal entries from Supabase`);

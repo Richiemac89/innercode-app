@@ -5,6 +5,11 @@ export type JournalSnapshotEntry = {
   text: string;
   createdAt: number;
   mood?: string;
+  slot?: 'morning' | 'evening';
+  /** Morning journal: 3 things grateful for */
+  gratitude?: string[];
+  /** Evening journal: 3 things that went well */
+  wentWell?: string[];
 };
 
 export interface JournalSummaryPayload {
@@ -67,6 +72,9 @@ export function buildJournalSummary(
       text: entry.text,
       createdAt: entry.createdAt,
       mood: entry.mood,
+      slot: entry.slot,
+      gratitude: entry.gratitude?.length ? entry.gratitude : undefined,
+      wentWell: entry.wentWell?.length ? entry.wentWell : undefined,
     }));
 
   const totalEntries = entries.length;
@@ -80,8 +88,12 @@ export function buildJournalSummary(
 
   const summarySegments: string[] = [`You have logged ${totalEntries} journal entries.`];
 
-  if (latestMood) {
-    summarySegments.push(`Your latest recorded mood was ${latestMood}.`);
+  const morningEntry = recentEntries.find((e) => e.slot === "morning");
+  const eveningEntry = recentEntries.find((e) => e.slot === "evening" || e.slot == null);
+  if (morningEntry?.mood) summarySegments.push(`Morning mood: ${morningEntry.mood}.`);
+  if (eveningEntry?.mood) summarySegments.push(`Evening mood: ${eveningEntry.mood}.`);
+  if (!morningEntry?.mood && !eveningEntry?.mood && latestMood) {
+    summarySegments.push(`Latest recorded mood: ${latestMood}.`);
   }
 
   if (patterns.length > 0) {

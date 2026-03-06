@@ -64,11 +64,19 @@ export function HowToUseInny({ onBack, onOpenAICoach }: HowToUseInnyProps) {
           </p>
         </div>
 
+        {/* Morning and evening journals */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>☀️🌙 Morning and evening journals</h2>
+          <p style={bodyStyle}>
+            InnerCode offers two journal slots each day: a <strong>morning journal</strong> (intentions, gratitude, how you're structuring your day) and an <strong>evening journal</strong> (reflection on the day, three things that went well). You can complete either or both at any time—they're not locked by clock time. Research suggests morning intention-setting and evening reflection can support mood and clarity. Both sync to Inny so she sees your morning mood and intentions and your evening reflections, giving her fuller context to tailor her replies.
+          </p>
+        </div>
+
         {/* Unlocking Inny and Goals */}
         <div style={sectionStyle}>
           <h2 style={headingStyle}>Unlocking Inny's full potential (and Goals)</h2>
           <p style={bodyStyle}>
-            To get the most from Inny, complete the full assessment (all 12 life areas), journal regularly with some detail, and try a few Daily Sparks. Once you've done that, the Goals feature unlocks too. You can then set value-aligned goals and track them, and Inny can refer to your goals and next steps in your conversations.
+            To get the most from Inny, complete the full assessment (all 12 life areas), journal regularly with some detail (morning and/or evening), and try a few Daily Sparks. Once you've done that, the Goals feature unlocks too. You can then set value-aligned goals and track them, and Inny can refer to your goals and next steps in your conversations.
           </p>
         </div>
 

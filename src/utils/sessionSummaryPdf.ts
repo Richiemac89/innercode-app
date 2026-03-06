@@ -68,6 +68,45 @@ function aggregateMoodByMonth(entries: JournalEntry[]): Array<{ month: string; c
   });
 }
 
+/** Morning vs evening mood by month for PDF. */
+function aggregateMoodByMonthAndSlot(
+  entries: JournalEntry[]
+): Array<{ month: string; morning?: { count: number; avg: number; label: string }; evening?: { count: number; avg: number; label: string } }> {
+  const byMonthSlot: Record<string, { morning: { sum: number; count: number }; evening: { sum: number; count: number } }> = {};
+  entries.forEach((e) => {
+    if (!e.mood) return;
+    const dateKey = dayKeyFromTs(e.createdAt);
+    const month = getMonthKey(dateKey);
+    if (!byMonthSlot[month]) {
+      byMonthSlot[month] = { morning: { sum: 0, count: 0 }, evening: { sum: 0, count: 0 } };
+    }
+    const slot = e.slot === "morning" ? "morning" : "evening";
+    const bucket = byMonthSlot[month][slot];
+    bucket.sum += MOOD_SCORES[e.mood] ?? 3;
+    bucket.count += 1;
+  });
+  const months = Object.keys(byMonthSlot).sort().reverse().slice(0, 6);
+  return months.map((month) => {
+    const toLabel = (avg: number) =>
+      avg >= 4.5 ? "Very good" : avg >= 3.5 ? "Good" : avg >= 2.5 ? "Neutral" : avg >= 1.5 ? "Low" : "Very low";
+    const morning = byMonthSlot[month].morning.count > 0
+      ? {
+          count: byMonthSlot[month].morning.count,
+          avg: Math.round((byMonthSlot[month].morning.sum / byMonthSlot[month].morning.count) * 10) / 10,
+          label: toLabel(byMonthSlot[month].morning.sum / byMonthSlot[month].morning.count),
+        }
+      : undefined;
+    const evening = byMonthSlot[month].evening.count > 0
+      ? {
+          count: byMonthSlot[month].evening.count,
+          avg: Math.round((byMonthSlot[month].evening.sum / byMonthSlot[month].evening.count) * 10) / 10,
+          label: toLabel(byMonthSlot[month].evening.sum / byMonthSlot[month].evening.count),
+        }
+      : undefined;
+    return { month, morning, evening };
+  });
+}
+
 function aggregateSparksByMonth(sparkCompletions: Record<string, string[]>): Array<{ month: string; completed: number }> {
   const byMonth: Record<string, number> = {};
   Object.entries(sparkCompletions).forEach(([dateKey, ids]) => {
@@ -260,6 +299,7 @@ export function generateSessionSummaryPdf(data: SessionSummaryData): void {
   y += lineHeight;
 
   const moodByMonth = aggregateMoodByMonth(data.journalEntries);
+  const moodByMonthSlot = aggregateMoodByMonthAndSlot(data.journalEntries);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   if (moodByMonth.length === 0) {
@@ -274,6 +314,20 @@ export function generateSessionSummaryPdf(data: SessionSummaryData): void {
       );
       y += lineHeight;
     });
+    const hasSlotBreakdown = moodByMonthSlot.some((r) => r.morning || r.evening);
+    if (hasSlotBreakdown) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      moodByMonthSlot.forEach((row) => {
+        if (row.morning || row.evening) {
+          const parts: string[] = [];
+          if (row.morning) parts.push(`Morning: ${row.morning.count} (${row.morning.label})`);
+          if (row.evening) parts.push(`Evening: ${row.evening.count} (${row.evening.label})`);
+          doc.text(`${formatMonthLabel(row.month)} — ${parts.join(" | ")}`, margin + 8, y);
+          y += lineHeight;
+        }
+      });
+    }
   }
   y += sectionGap;
 

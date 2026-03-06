@@ -45,7 +45,7 @@ export function Results({
   weakAreaSuggestions?: import("../components/SuggestionCard").Suggestion[];
   valueStrengthSuggestions?: import("../components/SuggestionCard").Suggestion[];
   discoveryAreaSuggestions?: import("../components/SuggestionCard").Suggestion[];
-  onOpenJournal?: () => void;
+  onOpenJournal?: (slot?: 'morning' | 'evening') => void;
   onRecompute?: () => void;
   showExpansionSuccess?: boolean;
   onExpansionSuccessComplete?: () => void;
@@ -62,6 +62,7 @@ export function Results({
   const [weakAreasExpanded, setWeakAreasExpanded] = useState(true);
   const [valuesExpanded, setValuesExpanded] = useState(true);
   const [discoveryExpanded, setDiscoveryExpanded] = useState(true);
+  const [journalCtaExpanded, setJournalCtaExpanded] = useState(false);
 
   // Celebration animation on first view
   const [showCelebration, setShowCelebration] = useState(() => !!pendingReveal);
@@ -262,46 +263,85 @@ export function Results({
           <ValuesLeague valueEntries={valueEntries} />
         </div>
 
-        {/* Journal CTA */}
+        {/* Journal CTA – collapsible Morning / Evening */}
         <section>
           {onOpenJournal && (
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button
-                onClick={onOpenJournal}
+            <div style={{ marginTop: 12 }}>
+              <div
                 style={{
-                  width: "100%",
-                  padding: "20px 24px",
-                  borderRadius: "50px",
-                  border: "none",
-                  background: "#6A3ABF",
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: "18px",
-                  cursor: "pointer",
-                  boxShadow: "0 8px 32px rgba(106, 58, 191, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  transform: "translateY(0)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 12px 40px rgba(106, 58, 191, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.2)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 8px 32px rgba(106, 58, 191, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)";
-                }}
-                onMouseDown={(e) => {
-                  e.currentTarget.style.transform = "translateY(0px) scale(0.98)";
-                }}
-                onMouseUp={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px) scale(1)";
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  border: "2px solid #6A3ABF",
+                  background: "#fff",
                 }}
               >
-                📓 Journal now
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setJournalCtaExpanded((e) => !e)}
+                  style={{
+                    width: "100%",
+                    padding: "20px 24px",
+                    border: "none",
+                    background: "transparent",
+                    color: "#6A3ABF",
+                    fontWeight: 700,
+                    fontSize: 18,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>📓 Journal</span>
+                  <span style={{ fontSize: 14 }}>{journalCtaExpanded ? "▲" : "▼"}</span>
+                </button>
+                {journalCtaExpanded && (
+                  <div style={{ display: "grid", gap: 10, padding: "0 16px 16px 16px" }}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenJournal("morning")}
+                      style={{
+                        padding: "16px 20px",
+                        borderRadius: 50,
+                        border: "none",
+                        background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+                        color: "#92400e",
+                        fontWeight: 700,
+                        fontSize: 16,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                      }}
+                    >
+                      ☀️ Morning journal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenJournal("evening")}
+                      style={{
+                        padding: "16px 20px",
+                        borderRadius: 50,
+                        border: "none",
+                        background: "linear-gradient(135deg, #c7d2fe, #a5b4fc)",
+                        color: "#3730a3",
+                        fontWeight: 700,
+                        fontSize: 16,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                      }}
+                    >
+                      🌙 Evening journal
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-
         </section>
       </div>
     </div>

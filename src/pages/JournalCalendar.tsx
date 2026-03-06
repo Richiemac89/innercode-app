@@ -277,15 +277,21 @@ export function JournalCalendar({
                         boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
                       }}
                     >
-                      {/* time */}
+                      {/* slot + time */}
                       <div
                         style={{
                           fontSize: 12,
                           color: "#6b6b6b",
                           marginBottom: 6,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
                         }}
                       >
-                        {new Date(e.createdAt).toLocaleTimeString()}
+                        <span style={{ fontWeight: 600 }}>
+                          {e.slot === "morning" ? "☀️ Morning" : e.slot === "evening" ? "🌙 Evening" : "🌙 Evening"}
+                        </span>
+                        <span>{new Date(e.createdAt).toLocaleTimeString()}</span>
                       </div>
 
                       {/* mood */}
@@ -339,8 +345,28 @@ export function JournalCalendar({
                         ))}
                       </div>
 
-                      {/* gratitude */}
-                      {e.gratitude && e.gratitude.length > 0 ? (
+                      {/* gratitude (morning) or went well (evening) */}
+                      {e.slot === "morning" && e.gratitude && e.gratitude.length > 0 ? (
+                        <div style={{ marginTop: 10, fontSize: 13 }}>
+                          <strong>Grateful for:</strong>
+                          <ul style={{ margin: "6px 0 0 18px" }}>
+                            {e.gratitude.map((g, i) => (
+                              <li key={i}>{g}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {e.slot === "evening" && e.wentWell && e.wentWell.length > 0 ? (
+                        <div style={{ marginTop: 10, fontSize: 13 }}>
+                          <strong>Went well:</strong>
+                          <ul style={{ margin: "6px 0 0 18px" }}>
+                            {e.wentWell.map((w, i) => (
+                              <li key={i}>{w}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {!e.slot && e.gratitude && e.gratitude.length > 0 ? (
                         <div style={{ marginTop: 10, fontSize: 13 }}>
                           <strong>Grateful for:</strong>
                           <ul style={{ margin: "6px 0 0 18px" }}>

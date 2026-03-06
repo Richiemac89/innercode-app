@@ -33,6 +33,12 @@ const stories: Story[] = [
     animationClass: "magnify-pulse"
   },
   {
+    emoji: "☀️🌙",
+    title: "Morning & Evening Journals",
+    description: "Journal twice a day for richer reflection: a morning journal (intentions, gratitude, how you'll structure your day) and an evening journal (reflection, what went well). Research links morning intention-setting and evening reflection to better mood and clarity. Both sync to Inny so she can support you with full context.",
+    animationClass: "brain-pulse"
+  },
+  {
     emoji: "🧩",
     title: "Your InnerCode Evolves",
     description: "The only app that ties values, life areas, journaling, goals, and weekly check-ins to one AI coach. Results update with every journal entry; Daily Sparks suggest micro-actions aligned with your values, and value-aligned goals keep your progress and next steps in one place.",

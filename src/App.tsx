@@ -294,7 +294,15 @@ export default function App() {
   };
 
   const [route, setRoute] = useState<Route>('newLanding');
+  const [initialJournalSlot, setInitialJournalSlot] = useState<'morning' | 'evening' | null>(null);
   const hasInitializedRoute = useRef(false);
+
+  // Clear initial journal slot when leaving journal route
+  useEffect(() => {
+    if (route !== 'journal') {
+      setInitialJournalSlot(null);
+    }
+  }, [route]);
 
   // CRITICAL FIX: Wait for auth and sync to complete before determining route
   // This prevents race condition where route is set before userData is loaded
@@ -1156,7 +1164,16 @@ export default function App() {
   function addJournalEntry(e: Omit<JournalEntry, "id" | "createdAt">) {
     const entryId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
       ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+          const r = (Math.random() * 16) | 0;
+          const v = char === 'x' ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+    // #region agent log
+    try {
+      fetch('http://127.0.0.1:7364/ingest/30a0ac4f-5fce-458c-b200-f87651f3e5d6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a90958'},body:JSON.stringify({sessionId:'a90958',runId:'addJournalEntry',hypothesisId:'B_C',location:'App.tsx:addJournalEntry()',message:'addJournalEntry called',data:{entryId,slot:e.slot,ts:Date.now()},timestamp:Date.now()})}).catch(()=>{});
+    } catch (_) {}
+    // #endregion
 
     const entry: JournalEntry = {
       id: entryId,
@@ -1165,13 +1182,25 @@ export default function App() {
       categories: Array.isArray(e.categories) ? e.categories.map(String) : [],
       values: Array.isArray(e.values) ? e.values.map(String) : [],
       gratitude: Array.isArray(e.gratitude) ? e.gratitude.map(String) : [],
+      wentWell: e.wentWell != null ? e.wentWell.map(String) : undefined,
       mood: e.mood ? String(e.mood) : undefined,
       suggestionRef: e.suggestionRef ? String(e.suggestionRef) : undefined,
+      slot: e.slot,
       goalRef: e.goalRef ? { goalId: e.goalRef.goalId, snippet: e.goalRef.snippet } : undefined,
     };
     setJournalEntries((prev: JournalEntry[]) => {
+      // Avoid duplicate when React Strict Mode double-invokes the updater
+      const duplicate = prev.some((existing) => existing.id === entry.id);
+      // #region agent log
+      try {
+        fetch('http://127.0.0.1:7364/ingest/30a0ac4f-5fce-458c-b200-f87651f3e5d6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a90958'},body:JSON.stringify({sessionId:'a90958',runId:'setJournalEntries',hypothesisId:'D',location:'App.tsx:setJournalEntries updater',message:duplicate?'updater skipped (id exists)':'updater adding entry',data:{entryId:entry.id,prevLen:prev.length,duplicate,ts:Date.now()},timestamp:Date.now()})}).catch(()=>{});
+      } catch (_) {}
+      // #endregion
+      if (duplicate) {
+        return prev;
+      }
       const updated = [entry, ...prev];
-      
+
       // Recompute results with journal entries included
       if (results) {
         // Combine onboarding answers with journal texts
@@ -2450,12 +2479,15 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <Dashboard
           userName={userName}
           userId={user?.id || undefined}
           onViewResults={() => setRoute("results")}
-          onJournal={() => setRoute("journal")}
+          onJournal={(slot) => {
+            if (slot) setInitialJournalSlot(slot);
+            setRoute("journal");
+          }}
           onAICoach={() => setRoute("aiCoach")}
           onHowItWorks={() => setRoute("instructions")}
           onHowToUseInny={() => setRoute("howToUseInny")}
@@ -2513,7 +2545,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <HowToUseInny
           onBack={() => setRoute("dashboard")}
           onOpenAICoach={() => setRoute("aiCoach")}
@@ -2534,7 +2566,7 @@ export default function App() {
       <>
         <GlobalStyles />
         {/* Hide menu during initial onboarding, show it during expansion */}
-        {isExpanding && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />}
+        {isExpanding && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />}
         <CategorySelection
           categories={availableCategories}
           preselected={isExpanding ? [] : selectedCategories}
@@ -2613,7 +2645,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        {isExpansion && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />}
+        {isExpansion && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />}
         <Toast text="Saved ✓" show={showToast} />
         <EnhancedOnboarding
           messages={messages}
@@ -2657,7 +2689,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <Results
           personalCode={results.personalCode}
           aligned={results.aligned}
@@ -2671,7 +2703,10 @@ export default function App() {
           weakAreaSuggestions={results.weakAreaSuggestions}
           valueStrengthSuggestions={results.valueStrengthSuggestions}
           discoveryAreaSuggestions={results.discoveryAreaSuggestions}
-          onOpenJournal={() => setRoute("journal")}
+          onOpenJournal={(slot) => {
+            if (slot) setInitialJournalSlot(slot);
+            setRoute("journal");
+          }}
           onRecompute={() => {
             // Recompute results with current data, preserving existing value scores
             const onboardingAnswers = messages
@@ -2714,7 +2749,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <Journal
           onBack={() => setRoute("results")}
           categories={[...categories]}
@@ -2725,6 +2760,7 @@ export default function App() {
           addEntry={addJournalEntry}
           goals={goals.map((g) => ({ id: g.id, title: g.title }))}
           goalsUnlocked={goalsUnlocked}
+          initialSlot={initialJournalSlot ?? undefined}
         />
       </>
     );
@@ -2745,7 +2781,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <Goals
           onBack={() => setRoute("dashboard")}
           goals={goals}
@@ -2779,7 +2815,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <AICoach
           weakAreaSuggestions={results?.weakAreaSuggestions || []}
           valueStrengthSuggestions={results?.valueStrengthSuggestions || []}
@@ -2819,7 +2855,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <JournalCalendar
           entries={journalEntries}
           onBack={() => setRoute("results")}
@@ -2846,7 +2882,7 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} />
+        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
         <Settings
           userName={userName}
           onBack={() => setRoute("dashboard")}
