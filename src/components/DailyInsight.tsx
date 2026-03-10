@@ -49,7 +49,7 @@ export function DailyInsight({ insight, onTalkAboutIt, onDismiss }: DailyInsight
           {getInsightEmoji()}
         </div>
         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#5b21b6", flex: 1 }}>
-          Daily Insight
+          Today's Insight
         </h3>
         <button
           onClick={onDismiss}

@@ -20,6 +20,8 @@ interface AICoachProps {
   goalsSummary?: string;
   onBack?: () => void;
   onJournal?: (prompt: string, suggestion?: Suggestion) => void;
+  /** Called when the screen mode changes (landing vs chat vs suggestions). Used to show/hide floating menu. */
+  onModeChange?: (mode: "landing" | "chat" | "suggestions" | "suggestionChat") => void;
 }
 
 interface Message {
@@ -45,6 +47,7 @@ export function AICoach({
   goalsSummary = "",
   onBack,
   onJournal,
+  onModeChange,
 }: AICoachProps) {
   const [mode, setMode] = useState<Mode>("landing");
   const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
@@ -57,6 +60,11 @@ export function AICoach({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
+
+  // Notify parent when mode changes (so App can show/hide floating menu)
+  useEffect(() => {
+    onModeChange?.(mode);
+  }, [mode, onModeChange]);
 
   // Combine all suggestions
   const allSuggestions = [

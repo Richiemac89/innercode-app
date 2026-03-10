@@ -153,16 +153,34 @@ export default function App() {
     const lastActiveRoute = safeGetItem('innercode_lastActiveRoute');
     if (lastActiveRoute && typeof lastActiveRoute === 'string') {
       const validRoutes: Route[] = [
-        'dashboard', 'journal', 'journalCalendar', 'aiCoach', 
-        'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals'
+        'dashboard', 'journal', 'journalCalendar', 'aiCoach',
+        'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals',
+        'onboarding', 'categorySelection',
       ];
       if (validRoutes.includes(lastActiveRoute as Route)) {
-        // Only restore if user is authenticated and has completed onboarding
         if (user?.email_confirmed_at) {
           const hasResults = !!userData.results || !!safeGetItem('innercode_results');
-          const hasSeenResults = !!userData.onboardingState?.has_seen_results || 
+          const hasSeenResults = !!userData.onboardingState?.has_seen_results ||
                                  safeGetItem('innercode_hasSeenResults') === 'true';
-          if (hasResults && hasSeenResults) {
+          // Restore onboarding/categorySelection only when we have in-progress state (avoid sending user back after they've finished)
+          if (lastActiveRoute === 'onboarding' || lastActiveRoute === 'categorySelection') {
+            const localState = safeGetItem('innercode_state_v1');
+            if (localState) {
+              try {
+                const parsed = JSON.parse(localState);
+                const sel = parsed.selectedCategories ?? parsed.selected_categories ?? [];
+                const comp = parsed.completedCategories ?? parsed.completed_categories ?? [];
+                const inProgress = Array.isArray(sel) && sel.some((c: string) => !(Array.isArray(comp) && comp.includes(c)));
+                if (inProgress && hasResults && hasSeenResults) {
+                  devLog.log('Restoring in-progress onboarding route:', lastActiveRoute);
+                  return lastActiveRoute as Route;
+                }
+              } catch (_) {
+                // ignore parse errors
+              }
+            }
+            // No in-progress local state: fall through and don't restore to onboarding
+          } else if (hasResults && hasSeenResults) {
             devLog.log('Restoring last active route:', lastActiveRoute);
             return lastActiveRoute as Route;
           }
@@ -297,7 +315,13 @@ export default function App() {
 
   const [route, setRoute] = useState<Route>('newLanding');
   const [initialJournalSlot, setInitialJournalSlot] = useState<'morning' | 'evening' | null>(null);
+  const [showFloatingMenuOnAiCoach, setShowFloatingMenuOnAiCoach] = useState(true);
   const hasInitializedRoute = useRef(false);
+
+  // When entering AI Coach, show floating menu on landing screen
+  useEffect(() => {
+    if (route === "aiCoach") setShowFloatingMenuOnAiCoach(true);
+  }, [route]);
 
   // Clear initial journal slot when leaving journal route
   useEffect(() => {
@@ -367,14 +391,27 @@ export default function App() {
           const lastActiveRoute = safeGetItem('innercode_lastActiveRoute');
           if (lastActiveRoute && lastActiveRoute !== route) {
             const validRoutes: Route[] = [
-              'dashboard', 'journal', 'journalCalendar', 'aiCoach', 
-              'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals'
+              'dashboard', 'journal', 'journalCalendar', 'aiCoach',
+              'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals',
+              'onboarding', 'categorySelection',
             ];
             if (validRoutes.includes(lastActiveRoute as Route) && user?.email_confirmed_at) {
               const hasResults = !!userData.results || !!safeGetItem('innercode_results');
-              const hasSeenResults = !!userData.onboardingState?.has_seen_results || 
+              const hasSeenResults = !!userData.onboardingState?.has_seen_results ||
                                      safeGetItem('innercode_hasSeenResults') === 'true';
-              if (hasResults && hasSeenResults) {
+              const canRestore = (lastActiveRoute === 'onboarding' || lastActiveRoute === 'categorySelection')
+                ? (() => {
+                    const localState = safeGetItem('innercode_state_v1');
+                    if (!localState) return false;
+                    try {
+                      const parsed = JSON.parse(localState);
+                      const sel = parsed.selectedCategories ?? parsed.selected_categories ?? [];
+                      const comp = parsed.completedCategories ?? parsed.completed_categories ?? [];
+                      return Array.isArray(sel) && sel.some((c: string) => !(Array.isArray(comp) && comp.includes(c)));
+                    } catch { return false; }
+                  })() && hasResults && hasSeenResults
+                : hasResults && hasSeenResults;
+              if (canRestore) {
                 devLog.log('Restoring route after focus:', lastActiveRoute);
                 setRoute(lastActiveRoute as Route);
               }
@@ -794,8 +831,26 @@ export default function App() {
     }
   });
   useEffect(() => {
-        const storage = getSafeLocalStorage();
-        storage?.setItem("innercode_journal", JSON.stringify(journalEntries));
+    const storage = getSafeLocalStorage();
+    if (!storage) return;
+
+    if (journalEntries.length === 0) {
+      // Safeguard: don't overwrite non-empty storage with empty state
+      try {
+        const raw = storage.getItem('innercode_journal');
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setJournalEntries(parsed);
+          return;
+        }
+      } catch {
+        return;
+      }
+      // Storage is empty or invalid; don't write [] (avoids overwriting good data on parse error)
+      return;
+    }
+
+    storage.setItem('innercode_journal', JSON.stringify(journalEntries));
   }, [journalEntries]);
 
   const [sparkCompletions, setSparkCompletions] = useState<Record<string, string[]>>(() => {
@@ -1001,11 +1056,40 @@ export default function App() {
     const onboardingState = userData.onboardingState;
 
     if (onboardingState) {
-      setMessages(Array.isArray(onboardingState.messages) ? onboardingState.messages : []);
-      setStep(typeof onboardingState.step === 'number' ? onboardingState.step : 0);
+      const remoteSel = Array.isArray(onboardingState.selected_categories) ? onboardingState.selected_categories : [];
+      const remoteComp = Array.isArray(onboardingState.completed_categories) ? onboardingState.completed_categories : [];
+      // Prefer local in-progress state when remote would clear/narrow it (e.g. after refresh before remote saved)
+      let useSel = remoteSel;
+      let useMessages: Msg[] = Array.isArray(onboardingState.messages) ? onboardingState.messages : [];
+      let useStep = typeof onboardingState.step === 'number' ? onboardingState.step : 0;
+      const localStateRaw = safeGetItem('innercode_state_v1');
+      if (localStateRaw) {
+        try {
+          const parsed = JSON.parse(localStateRaw);
+          const localSel = parsed.selectedCategories ?? parsed.selected_categories ?? [];
+          const localComp = parsed.completedCategories ?? parsed.completed_categories ?? [];
+          if (Array.isArray(localSel) && localSel.length > 0) {
+            const localInProgress = localSel.filter((c: string) => !(Array.isArray(localComp) && localComp.includes(c)));
+            const remoteWouldLoseInProgress = localInProgress.length > 0 && (
+              remoteSel.length === 0 ||
+              localInProgress.some((c: string) => !remoteSel.includes(c))
+            );
+            if (remoteWouldLoseInProgress) {
+              useSel = localSel;
+              useMessages = Array.isArray(parsed.messages) ? parsed.messages : [];
+              useStep = typeof parsed.step === 'number' ? parsed.step : 0;
+              devLog.log('Preferring local in-progress onboarding state over remote');
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+      setMessages(useMessages);
+      setStep(useStep);
       setInput("");
-      setSelectedCategories(Array.isArray(onboardingState.selected_categories) ? onboardingState.selected_categories : []);
-      setCompletedCategories(Array.isArray(onboardingState.completed_categories) ? onboardingState.completed_categories : []);
+      setSelectedCategories(useSel);
+      setCompletedCategories(remoteComp);
 
       const scoreSource = onboardingState.category_scores && typeof onboardingState.category_scores === 'object'
         ? onboardingState.category_scores
@@ -2177,20 +2261,33 @@ export default function App() {
     }
     
     const validRoutes: Route[] = [
-      'dashboard', 'journal', 'journalCalendar', 'aiCoach', 
-      'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals'
+      'dashboard', 'journal', 'journalCalendar', 'aiCoach',
+      'results', 'settings', 'instructions', 'howToUseInny', 'quickCheckIn', 'goals',
+      'onboarding', 'categorySelection',
     ];
-    
+
     if (!validRoutes.includes(lastActiveRoute as Route)) {
       return;
     }
-    
-    // Only restore if user is authenticated and has completed onboarding
+
+    // Only restore if user is authenticated and has completed onboarding (or in-progress for onboarding/categorySelection)
     if (user?.email_confirmed_at) {
       const hasResults = !!userData.results || !!safeGetItem('innercode_results');
-      const hasSeenResults = !!userData.onboardingState?.has_seen_results || 
+      const hasSeenResults = !!userData.onboardingState?.has_seen_results ||
                              safeGetItem('innercode_hasSeenResults') === 'true';
-      if (hasResults && hasSeenResults) {
+      const canRestore = (lastActiveRoute === 'onboarding' || lastActiveRoute === 'categorySelection')
+        ? (() => {
+            const localState = safeGetItem('innercode_state_v1');
+            if (!localState) return false;
+            try {
+              const parsed = JSON.parse(localState);
+              const sel = parsed.selectedCategories ?? parsed.selected_categories ?? [];
+              const comp = parsed.completedCategories ?? parsed.completed_categories ?? [];
+              return Array.isArray(sel) && sel.some((c: string) => !(Array.isArray(comp) && comp.includes(c))) && hasResults && hasSeenResults;
+            } catch { return false; }
+          })()
+        : hasResults && hasSeenResults;
+      if (canRestore) {
         devLog.log('Restoring last active route after hydration:', lastActiveRoute);
         setRoute(lastActiveRoute as Route);
       }
@@ -2565,40 +2662,38 @@ export default function App() {
 
   if (route === "categorySelection") {
     // isExpanding should be true only if user has COMPLETED categories and wants to add more
-    // NOT if they just selected categories but haven't completed onboarding for them yet
     const isExpanding = completedCategories.length > 0;
-    const availableCategories = isExpanding 
-      ? categories.filter(cat => !selectedCategories.includes(cat))
+    // Show all not-completed areas so in-progress ones don't disappear; preselected = currently exploring (selected but not completed)
+    const availableCategories = isExpanding
+      ? categories.filter(cat => !completedCategories.includes(cat))
       : categories;
-    
+    const preselectedInProgress = isExpanding
+      ? selectedCategories.filter(cat => !completedCategories.includes(cat))
+      : selectedCategories;
+
     return (
       <>
         <GlobalStyles />
-        {/* Hide menu during initial onboarding, show it during expansion */}
         {isExpanding && <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />}
         <CategorySelection
           categories={availableCategories}
-          preselected={isExpanding ? [] : selectedCategories}
+          preselected={preselectedInProgress}
           minSelection={isExpanding ? 1 : 3}
-          maxSelection={isExpanding ? Math.min(3, availableCategories.length) : 3}
+          maxSelection={isExpanding ? Math.min(9, availableCategories.length) : 3}
           isExpanding={isExpanding}
           currentProgress={completedCategories.length}
           onBack={!isExpanding ? () => setRoute("nameCollection") : undefined}
           onContinue={(selected) => {
-            // Merge new selections with existing ones
-            const updatedSelections = isExpanding 
-              ? [...selectedCategories, ...selected]
-              : selected;
-            
-            // If this is an expansion, clear old onboarding state to start fresh
+            // When expanding: replace with user's choice so intro count matches; when initial: selection as-is
+            const updatedSelections = selected;
+
             if (isExpanding) {
               setMessages([]);
               setStep(0);
               setRatingCategory(null);
-              setExpansionPrompts([]); // Clear so initialization runs
+              setExpansionPrompts([]);
             }
-            
-            // Save immediately to localStorage (don't wait for useEffect)
+
             try {
               const snapshot = buildPersistedStateSnapshot({
                 route: resolveRouteForCache(route) ?? route,
@@ -2618,7 +2713,7 @@ export default function App() {
             } catch (e) {
               devLog.error("Failed to save selectedCategories:", e);
             }
-            
+
             setSelectedCategories(updatedSelections);
             setRoute("onboarding");
           }}
@@ -2824,7 +2919,9 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
+        {showFloatingMenuOnAiCoach && (
+          <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
+        )}
         <AICoach
           weakAreaSuggestions={results?.weakAreaSuggestions || []}
           valueStrengthSuggestions={results?.valueStrengthSuggestions || []}
@@ -2842,6 +2939,7 @@ export default function App() {
             // Navigate to journal with pre-filled prompt
             setRoute("journal");
           }}
+          onModeChange={(mode) => setShowFloatingMenuOnAiCoach(mode === "landing")}
         />
       </>
     );

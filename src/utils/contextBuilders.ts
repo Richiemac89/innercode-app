@@ -17,7 +17,7 @@ export interface JournalSummaryPayload {
   recentEntries: JournalSnapshotEntry[];
 }
 
-const DEFAULT_RECENT_ENTRY_LIMIT = 5;
+const DEFAULT_RECENT_ENTRY_LIMIT = 120;
 const DEFAULT_ONBOARDING_LIMIT = 20;
 
 export function extractOnboardingAnswers(

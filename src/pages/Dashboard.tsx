@@ -47,27 +47,21 @@ interface DashboardProps {
 function calculateStreak(entries: JournalEntry[]): number {
   if (entries.length === 0) return 0;
 
-  const sortedEntries = [...entries].sort((a, b) => b.createdAt - a.createdAt);
+  const daysWithEntries = new Set(
+    entries.map((e) => dayKeyFromTs(e.createdAt))
+  );
+  const todayKey = dayKeyFromTs(getCurrentTime());
+  if (!daysWithEntries.has(todayKey)) return 0;
+
+  let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
-  let streak = 0;
   let currentDate = new Date(today);
-  
-  for (let i = 0; i < sortedEntries.length; i++) {
-    const entryDate = new Date(sortedEntries[i].createdAt);
-    entryDate.setHours(0, 0, 0, 0);
-    const dayKey = dayKeyFromTs(currentDate.getTime());
-    const entryKey = dayKeyFromTs(entryDate.getTime());
-    
-    if (entryKey === dayKey) {
-      streak++;
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else {
-      break;
-    }
+
+  while (daysWithEntries.has(dayKeyFromTs(currentDate.getTime()))) {
+    streak++;
+    currentDate.setDate(currentDate.getDate() - 1);
   }
-  
   return streak;
 }
 
@@ -85,6 +79,42 @@ function getLastJournalDate(entries: JournalEntry[]): string {
   return date.toLocaleDateString();
 }
 
+/** Calendar icon showing today's date (day of month). Uses getCurrentTime() so debug time is respected. */
+function CalendarIconWithToday() {
+  const day = new Date(getCurrentTime()).getDate();
+  const size = 32;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label={`Calendar, today is the ${day}`}
+      style={{ display: "inline-block", verticalAlign: "middle" }}
+    >
+      {/* Calendar page */}
+      <rect x="5" y="10" width="22" height="18" rx="2" fill="#fff" stroke="#d1d5db" strokeWidth="1.2" />
+      {/* Top binding */}
+      <rect x="5" y="6" width="22" height="6" rx="1.5" fill="#9ca3af" />
+      <rect x="7" y="8" width="18" height="2.5" rx="0.5" fill="#6b7280" />
+      {/* Day number */}
+      <text
+        x="16"
+        y="24"
+        textAnchor="middle"
+        fill="#374151"
+        fontSize="11"
+        fontWeight="700"
+        fontFamily="system-ui, -apple-system, sans-serif"
+      >
+        {day}
+      </text>
+    </svg>
+  );
+}
+
 function calculateAverageMood(entries: JournalEntry[]): { score: number; emoji: string } {
   const moodScores: Record<string, number> = {
     "😭": 1,
@@ -95,22 +125,34 @@ function calculateAverageMood(entries: JournalEntry[]): { score: number; emoji: 
     "😡": 2,
   };
 
-  const entriesWithMood = entries.filter(e => e.mood);
-  if (entriesWithMood.length === 0) return { score: 0, emoji: "😐" };
+  function getMoodScore(mood: string | undefined): number {
+    if (!mood) return 3;
+    return moodScores[mood] || 3;
+  }
 
-  // Get most recent 7 days
-  const weekAgo = getCurrentTime() - (7 * 24 * 60 * 60 * 1000);
-  const recentEntries = entriesWithMood.filter(e => e.createdAt >= weekAgo);
-  
-  if (recentEntries.length === 0) return { score: 0, emoji: "😐" };
+  // Same as MoodTrends: last 7 calendar days, one score per day (average of that day's entries)
+  const today = new Date();
+  const dayScores: number[] = [];
 
-  const totalScore = recentEntries.reduce((sum, entry) => {
-    return sum + (moodScores[entry.mood || "😐"] || 3);
-  }, 0);
-  
-  const avgScore = totalScore / recentEntries.length;
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    const dayKey = dayKeyFromTs(date.getTime());
+    const dayEntries = entries.filter((e) => dayKeyFromTs(e.createdAt) === dayKey);
+    const morningEntry = dayEntries.find((e) => e.slot === "morning");
+    const eveningEntry = dayEntries.find((e) => e.slot === "evening" || e.slot == null);
 
-  // Determine emoji based on average
+    const scores: number[] = [];
+    if (morningEntry?.mood) scores.push(getMoodScore(morningEntry.mood));
+    if (eveningEntry?.mood) scores.push(getMoodScore(eveningEntry.mood));
+    const dayScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    if (dayScore > 0) dayScores.push(dayScore);
+  }
+
+  if (dayScores.length === 0) return { score: 0, emoji: "😐" };
+  const avgScore = dayScores.reduce((a, b) => a + b, 0) / dayScores.length;
+
   let emoji = "😐";
   if (avgScore >= 4.5) emoji = "😄";
   else if (avgScore >= 3.5) emoji = "🙂";
@@ -153,7 +195,7 @@ export function Dashboard({
   useResetZoom();
   
   // Info modal state
-  const [showInfoModal, setShowInfoModal] = useState<'lifeAreas' | 'mood' | null>(null);
+  const [showInfoModal, setShowInfoModal] = useState<'lifeAreas' | 'mood' | 'streak' | null>(null);
   
   // Daily Sparks state
   const readSparkCompletionsFromLocal = useCallback((): Record<string, string[]> => {
@@ -387,6 +429,16 @@ export function Dashboard({
     hour < 12 ? "Good morning" :
     hour < 18 ? "Good afternoon" :
     "Good evening";
+
+  // Streak card tier for 10/20/30+ consecutive days (illuminating colors)
+  const streakTier = streak >= 30 ? "fire" : streak >= 20 ? "hot" : streak >= 10 ? "warm" : "normal";
+  const streakCardStyle: Record<string, { background: string; border: string; boxShadow: string }> = {
+    normal: { background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
+    warm: { background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", border: "2px solid #f59e0b", boxShadow: "0 4px 12px rgba(245,158,11,0.25)" },
+    hot: { background: "linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)", border: "2px solid #ea580c", boxShadow: "0 4px 16px rgba(234,88,12,0.3)" },
+    fire: { background: "linear-gradient(135deg, #fed7aa 0%, #fdba74 50%, #fb923c 100%)", border: "2px solid #c2410c", boxShadow: "0 6px 20px rgba(194,65,12,0.35)" },
+  };
+  const streakCardTierStyles = streakCardStyle[streakTier];
 
   return (
     <div
@@ -706,17 +758,65 @@ export function Dashboard({
           {/* Streak Card */}
           <div
             style={{
-              background: "#fff",
+              position: "relative",
+              ...streakCardTierStyles,
               borderRadius: 16,
               padding: "20px 16px",
               textAlign: "center",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              border: streak >= 7 ? "2px solid #f59e0b" : "1px solid #e5e7eb",
               opacity: !hasCompletedOnboarding ? 0.6 : 1,
             }}
           >
+            {/* Fire emoji in corner when streak is 5+ (top-left so info button stays top-right) */}
+            {hasCompletedOnboarding && streak >= 5 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  left: 8,
+                  fontSize: 20,
+                  lineHeight: 1,
+                  filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
+                }}
+                aria-hidden
+              >
+                🔥
+              </span>
+            )}
+            {/* Info Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowInfoModal('streak');
+              }}
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                background: "rgba(139,92,246,0.1)",
+                border: "none",
+                borderRadius: "50%",
+                width: 24,
+                height: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                fontSize: 12,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(139,92,246,0.2)";
+                e.currentTarget.style.transform = "scale(1.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(139,92,246,0.1)";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              ℹ️
+            </button>
             <div style={{ fontSize: 32, marginBottom: 4 }}>
-              {hasCompletedOnboarding && streak >= 7 ? "🔥" : "📅"}
+              <CalendarIconWithToday />
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, color: "#3b3b3b" }}>
               {hasCompletedOnboarding ? streak : "-"}
@@ -1241,7 +1341,7 @@ export function Dashboard({
                   </p>
                 </div>
               </>
-            ) : (
+            ) : showInfoModal === 'mood' ? (
               <>
                 <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>
                   {moodEmoji}
@@ -1295,7 +1395,57 @@ export function Dashboard({
                   </p>
                 </div>
               </>
-            )}
+            ) : showInfoModal === 'streak' ? (
+              <>
+                <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>
+                  <CalendarIconWithToday />
+                </div>
+                <h3 style={{ 
+                  margin: "0 0 12px", 
+                  fontSize: 20, 
+                  fontWeight: 800, 
+                  color: "#3b3b3b",
+                  textAlign: "center",
+                }}>
+                  Day Streak
+                </h3>
+                <p style={{ 
+                  color: "#6b6b6b", 
+                  fontSize: 15, 
+                  lineHeight: 1.6,
+                  margin: "0 0 12px",
+                }}>
+                  Your <strong>day streak</strong> is the number of <strong>consecutive days</strong> you’ve journaled. Journal once (morning or evening) or twice in a day—each day still counts as one. If you skip a day, the streak resets to zero.
+                </p>
+                <div style={{
+                  background: "rgba(245,158,11,0.08)",
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 12,
+                }}>
+                  <div style={{ fontSize: 13, color: "#4b4b4b", marginBottom: 4 }}>
+                    <strong>🔥 Why do I see a fire?</strong>
+                  </div>
+                  <p style={{ fontSize: 13, color: "#6b6b6b", lineHeight: 1.6, margin: 0 }}>
+                    When you reach <strong>5 or more</strong> consecutive days, a fire appears in the corner of the card to celebrate your consistency. At 10, 20, and 30+ days the card also lights up with warmer colours to show you’re on a hot streak!
+                  </p>
+                </div>
+                <div style={{ 
+                  padding: 12, 
+                  background: "rgba(139,92,246,0.08)", 
+                  borderRadius: 12,
+                }}>
+                  <p style={{ 
+                    color: "#6d28d9", 
+                    fontSize: 14, 
+                    lineHeight: 1.5,
+                    margin: 0,
+                  }}>
+                    💡 <strong>Tip:</strong> Building a streak is about showing up each day—even a short journal entry keeps it going.
+                  </p>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}

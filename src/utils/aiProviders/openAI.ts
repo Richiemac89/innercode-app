@@ -14,7 +14,7 @@ interface InvokeResponse {
   error?: string;
 }
 
-const RECENT_JOURNAL_LIMIT = 5;
+const RECENT_JOURNAL_LIMIT = 120;
 
 function getFallbackMessage(status?: number) {
   if (status === 401 || status === 403) {

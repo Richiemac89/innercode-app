@@ -13,27 +13,21 @@ function getDefaultSlot(): JournalSlot {
 function calculateStreak(entries: JournalEntry[]): number {
   if (entries.length === 0) return 0;
 
-  const sortedEntries = [...entries].sort((a, b) => b.createdAt - a.createdAt);
+  const daysWithEntries = new Set(
+    entries.map((e) => dayKeyFromTs(e.createdAt))
+  );
+  const todayKey = dayKeyFromTs(getCurrentTime());
+  if (!daysWithEntries.has(todayKey)) return 0;
+
+  let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
-  let streak = 0;
   let currentDate = new Date(today);
-  
-  for (let i = 0; i < sortedEntries.length; i++) {
-    const entryDate = new Date(sortedEntries[i].createdAt);
-    entryDate.setHours(0, 0, 0, 0);
-    const dayKey = dayKeyFromTs(currentDate.getTime());
-    const entryKey = dayKeyFromTs(entryDate.getTime());
-    
-    if (entryKey === dayKey) {
-      streak++;
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else {
-      break;
-    }
+
+  while (daysWithEntries.has(dayKeyFromTs(currentDate.getTime()))) {
+    streak++;
+    currentDate.setDate(currentDate.getDate() - 1);
   }
-  
   return streak;
 }
 
@@ -102,6 +96,28 @@ export function Journal({
     if (savedSlot === "morning" && hasMorningToday) setSavedSlot(null);
     if (savedSlot === "evening" && hasEveningToday) setSavedSlot(null);
   }, [savedSlot, hasMorningToday, hasEveningToday]);
+
+  // Reset form when switching between morning and evening journal
+  useEffect(() => {
+    setText("");
+    setCats([]);
+    setVals([]);
+    setGrat(["", "", ""]);
+    setWentWell(["", "", ""]);
+    setMood(undefined);
+    setSaved(false);
+    setShowCelebration(false);
+    setCelebrationMsg("");
+    setGoalRefGoalId("");
+    setGoalReflectionSnippet("");
+    setGoalReflectionExpanded(false);
+    setSavedSlot(null);
+
+    // Scroll to top when opening this journal slot (same component, so useResetZoom doesn't run again)
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }, [slot]);
 
   // Reset zoom and scroll to top when component mounts
   useResetZoom();
