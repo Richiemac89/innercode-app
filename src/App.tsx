@@ -20,7 +20,7 @@ import { Results } from "./pages/Results";
 import { Journal } from "./pages/Journal";
 import { AICoach } from "./pages/AICoach";
 import { JournalCalendar } from "./pages/JournalCalendar";
-import { QuickCheckIn } from "./pages/QuickCheckIn";
+import { WeeklyReflection } from "./pages/WeeklyReflection";
 import { Settings } from "./pages/Settings";
 import { Goals } from "./pages/Goals";
 import { PROMPTS } from "./constants/prompts";
@@ -46,7 +46,7 @@ import { getSupabaseClient } from "./lib/supabase";
 import { upsertOnboardingAnswerToSupabase, processOfflineQueue, saveOnboardingStateToSupabase, saveSparkCompletionsToSupabase } from "./lib/supabaseData";
 import { devLog } from "./utils/devLog";
 import { FEATURES } from "./constants/featureFlags";
-import { getAreasForCheckIn, getCheckInHistorySync, shouldShowCheckIn } from "./utils/checkInLogic";
+import { shouldShowWeeklyReflection } from "./utils/weeklyReflectionLogic";
 import { extractOnboardingAnswers, buildJournalSummary, formatOnboardingAnswersFromSupabase, buildGoalsSummary } from "./utils/contextBuilders";
 import { getGoalsUnlockProgress } from "./utils/goalUnlock";
 
@@ -3051,9 +3051,8 @@ export default function App() {
     );
   }
 
-  // 👇 WEEKLY CHECK-IN FEATURE START
+  // 👇 WEEKLY REFLECTION FEATURE (replaces life-area check-in)
   if (route === "quickCheckIn" && FEATURES.WEEKLY_CHECKIN) {
-    // CRITICAL FIX: Require authentication for quick check-in
     if (!user || !user.email_confirmed_at) {
       return (
         <>
@@ -3065,38 +3064,33 @@ export default function App() {
         </>
       );
     }
-    
-    const checkInHistory = getCheckInHistorySync();
-    const areasToCheck = getAreasForCheckIn(completedCategories, categoryScores, checkInHistory);
-    
     return (
       <>
         <GlobalStyles />
-        <QuickCheckIn
-          areas={areasToCheck}
-          currentScores={categoryScores}
-          onComplete={async (updatedScores) => {
-            setCategoryScores(updatedScores);
-            // CRITICAL FIX: Wait for refresh to complete before navigating
-            try {
-              await refreshUserData();
-              // Force a small delay to ensure localStorage is updated
-              await new Promise(resolve => setTimeout(resolve, 100));
-            } catch (error) {
-              devLog.error('Failed to refresh user data after check-in', error);
-            }
-            setRoute("dashboard");
+        <WeeklyReflection
+          goals={goals}
+          onSaveGoals={() => {
+            void refreshUserData();
           }}
           onBack={() => setRoute("dashboard")}
+          onComplete={() => {
+            setRoute("dashboard");
+            void refreshUserData();
+          }}
+          journalEntries={journalEntries}
+          sparkCompletions={sparkCompletions}
+          valueEntries={results?.valueEntries ?? []}
           onboardingAnswers={onboardingAnswers}
           journalSummary={journalSummary}
           recentJournalEntries={recentJournalEntries}
-          goalsSummary={buildGoalsSummary(goals)}
+          categoryScores={categoryScores}
+          completedCategories={completedCategories}
+          userName={userName}
         />
       </>
     );
   }
-  // 👆 WEEKLY CHECK-IN FEATURE END
+  // 👆 WEEKLY REFLECTION FEATURE END
 
   return (
     <>

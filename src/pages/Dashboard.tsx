@@ -7,7 +7,8 @@ import { WeeklyCheckInBanner } from "../components/WeeklyCheckInBanner";
 import { DailySparks } from "../components/DailySparks";
 import { DailyInsight } from "../components/DailyInsight";
 import { FEATURES } from "../constants/featureFlags";
-import { getCheckInHistorySync, shouldShowCheckIn } from "../utils/checkInLogic";
+import { getCheckInHistorySync } from "../utils/checkInLogic";
+import { shouldShowWeeklyReflection } from "../utils/weeklyReflectionLogic";
 import { getTodaysSparks } from "../utils/sparkSelection";
 import { getTodaysInsight, dismissInsight, markInsightInteracted } from "../utils/insightStorage";
 import { MicroAction } from "../constants/microActions";
@@ -605,14 +606,11 @@ export function Dashboard({
           </div>
         )}
 
-        {/* 👇 WEEKLY CHECK-IN FEATURE START */}
-        {FEATURES.WEEKLY_CHECKIN && hasCompletedOnboarding && onStartCheckIn && completedCategories.length > 0 && shouldShowCheckIn(getCheckInHistorySync()) && (
-          <WeeklyCheckInBanner
-            onStartCheckIn={onStartCheckIn}
-            areaCount={completedCategories.length}
-          />
+        {/* 👇 WEEKLY REFLECTION FEATURE START */}
+        {FEATURES.WEEKLY_CHECKIN && hasCompletedOnboarding && onStartCheckIn && completedCategories.length > 0 && shouldShowWeeklyReflection() && (
+          <WeeklyCheckInBanner onStartCheckIn={onStartCheckIn} />
         )}
-        {/* 👆 WEEKLY CHECK-IN FEATURE END */}
+        {/* 👆 WEEKLY REFLECTION FEATURE END */}
 
         {/* 👇 DAILY SPARKS FEATURE START */}
         {FEATURES.DAILY_SPARKS && hasCompletedOnboarding && todaysSparks.length > 0 && (

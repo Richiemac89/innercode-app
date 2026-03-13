@@ -1,16 +1,11 @@
-// Weekly Check-In Banner Component
-// Shows on Dashboard when check-in is due
+// Weekly Reflection Banner Component
+// Shows on Dashboard when weekly reflection is due (Option A: same timing as previous check-in)
 
 interface WeeklyCheckInBannerProps {
   onStartCheckIn: () => void;
-  areaCount: number;
 }
 
-export function WeeklyCheckInBanner({ onStartCheckIn, areaCount }: WeeklyCheckInBannerProps) {
-  const description = areaCount > 5
-    ? `Focus on your top 5 priority areas this week`
-    : `Give a quick rating to your ${areaCount} area${areaCount !== 1 ? 's' : ''}`;
-
+export function WeeklyCheckInBanner({ onStartCheckIn }: WeeklyCheckInBannerProps) {
   return (
     <div
       style={{
@@ -23,14 +18,14 @@ export function WeeklyCheckInBanner({ onStartCheckIn, areaCount }: WeeklyCheckIn
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 18 }}>⏰</span>
+        <span style={{ fontSize: 18 }}>✨</span>
         <strong style={{ color: "#5b21b6", fontSize: 16 }}>
-          Weekly Check-In Available
+          Your weekly reflection is ready
         </strong>
       </div>
 
       <div style={{ color: "#6d28d9", fontSize: 13, marginBottom: 12 }}>
-        {description}
+        Inny has reflected on your journals, sparks, mood, and goals. Review your week and goals.
       </div>
 
       <button
@@ -57,12 +52,8 @@ export function WeeklyCheckInBanner({ onStartCheckIn, areaCount }: WeeklyCheckIn
           e.currentTarget.style.boxShadow = "0 4px 12px rgba(124,58,237,0.3)";
         }}
       >
-        Start Weekly Check-In
+        See your reflection
       </button>
-
-      <div style={{ color: "#6d28d9", fontSize: 12, marginTop: 10 }}>
-        Takes about {areaCount <= 5 ? '1 minute' : '2 minutes'} to complete
-      </div>
     </div>
   );
 }

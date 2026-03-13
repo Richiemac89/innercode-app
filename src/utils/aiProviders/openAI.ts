@@ -1,5 +1,6 @@
 // OpenAI Provider Implementation via Supabase Edge Functions
-import { AIService, UserContext, CheckInChanges, InsightPattern } from "../aiService";
+import { AIService, UserContext, CheckInChanges, InsightPattern, WeeklyReflectionResult } from "../aiService";
+import type { WeeklyReflectionPayload } from "../contextBuilders";
 import { Suggestion } from "../../components/SuggestionCard";
 import { getSupabaseClient } from "../../lib/supabase";
 import { devLog } from "../devLog";
@@ -285,6 +286,80 @@ Celebrate improvements, acknowledge stability, and gently address declines. Keep
       maxTokens: 200,
       model: "gpt-4o-mini",
     });
+  }
+
+  async generateWeeklyReflection(payload: WeeklyReflectionPayload, context: UserContext): Promise<WeeklyReflectionResult> {
+    const moodLines = payload.moodByDay
+      .map((d) => `${d.dateKey}: ${d.moodLabel ?? "no mood"}`)
+      .join("\n");
+    const goalsLines = payload.goalsForReview
+      .map(
+        (g) =>
+          `- ${g.title} (id: ${g.goalId}, value: ${g.relevantValue}, ${g.horizon}, completed: ${g.isCompleted}, hasSteps: ${g.hasSteps}, progress: ${g.stepsDone}/${g.stepsTotal})`
+      )
+      .join("\n");
+    const openGoalsNoSteps = payload.goalsForReview.filter((g) => !g.isCompleted && !g.hasSteps);
+    const avgMood = payload.averageMoodScoreLast7Days;
+    const avgMoodLine = avgMood != null ? `\nAVERAGE MOOD (last 7 days, 1-5 scale): ${avgMood}` : "\nAVERAGE MOOD: No mood data for the last 7 days.";
+    const userPrompt = `You are generating a weekly reflection for the user. Use the following data from the last 7 days.
+
+JOURNAL SUMMARY:
+${payload.journalSummary}
+
+RECENT JOURNAL THEMES (for mood factors): ${payload.recentJournalEntries?.slice(0, 5).map((e) => e.text?.slice(0, 100)).join(" | ") || "None"}
+
+MOOD BY DAY:
+${moodLines}
+${avgMoodLine}
+
+SPARKS COMPLETED THIS WEEK: ${payload.sparksCompletedThisWeek.length ? payload.sparksCompletedThisWeek.join("; ") : "None"}
+
+GOALS FOR REVIEW:
+${goalsLines}
+
+TOP VALUES: ${payload.valueEntries.slice(0, 3).map(([v]) => v).join(", ")}
+${payload.negativeThemes?.length ? `NEGATIVE THEMES IN JOURNAL (address gently, offer value-aligned solutions): ${payload.negativeThemes.join(", ")}` : ""}
+
+Respond with a single JSON object (no markdown, no code block) with exactly these keys:
+- "reflectionText": string. A warm 2-5 sentence reflection. Include: (1) positive insight from journals, sparks, mood, and goals; (2) MOOD: Tell the user their average mood for the last 7 days (use the AVERAGE MOOD value above). If average is 5 (or 4.5+), say they are already in the best mood and to keep doing what they're doing. If below 5, state the average and suggest 1-2 concrete ways they could improve their mood based on their TOP VALUES (e.g. if they value connection, suggest a small connection-related habit). (3) If there are negative themes, acknowledge gently and offer 1-2 value-aligned solutions.
+- "moodPositiveFactors": string[]. Up to 3 bullet points with a bit more detail: one short sentence each for what likely contributed to better mood days, with a brief reason or example (e.g. "Completing sparks gave a sense of achievement and small wins" not just "Completed sparks").
+- "moodNegativeFactors": string[]. Up to 3 short phrases for what likely contributed to lower mood days.
+- "goalSuggestions": array of { "goalId": string, "suggestedSteps": string[] }. For each OPEN goal that has NO steps (hasSteps: false), suggest 2-3 concrete action steps. Omit goals that already have steps or are completed.
+
+Be concise and encouraging. Return only the JSON object.`;
+
+    const reply = await invokeInnyChat({
+      messages: [
+        { role: "system", content: this.buildSystemPrompt(context) + "\n\nYou respond only with valid JSON. No markdown, no explanation." },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      maxTokens: 1000,
+      model: "gpt-4o-mini",
+    });
+
+    try {
+      const raw = reply.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/m, "$1").trim();
+      const parsed = JSON.parse(raw) as WeeklyReflectionResult;
+      return {
+        reflectionText: typeof parsed.reflectionText === "string" ? parsed.reflectionText : "Here’s to another week of small steps. 💚",
+        moodPositiveFactors: Array.isArray(parsed.moodPositiveFactors) ? parsed.moodPositiveFactors.slice(0, 3) : [],
+        moodNegativeFactors: Array.isArray(parsed.moodNegativeFactors) ? parsed.moodNegativeFactors.slice(0, 3) : [],
+        goalSuggestions: Array.isArray(parsed.goalSuggestions)
+          ? parsed.goalSuggestions.map((g) => ({
+              goalId: String(g?.goalId ?? ""),
+              suggestedSteps: Array.isArray(g?.suggestedSteps) ? g.suggestedSteps.slice(0, 5) : [],
+            }))
+          : [],
+      };
+    } catch {
+      return {
+        reflectionText: reply?.slice(0, 500) || "Here’s to another week of small steps. 💚",
+        moodPositiveFactors: [],
+        moodNegativeFactors: [],
+        goalSuggestions: [],
+      };
+    }
   }
 
   async generateInsight(pattern: InsightPattern, context: UserContext): Promise<string> {

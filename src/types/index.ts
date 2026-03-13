@@ -171,3 +171,17 @@ export interface Goal {
   completedAt?: number;
 }
 
+// Weekly Reflection (replaces life-area re-rating check-in)
+/** Stored after user completes a weekly reflection (Option A: reuse check-in timing) */
+export interface WeeklyReflectionStored {
+  lastCompletedAt: number;
+  reflection?: WeeklyReflectionData;
+}
+
+export interface WeeklyReflectionData {
+  reflectionText: string;
+  moodPositiveFactors: string[];
+  moodNegativeFactors: string[];
+  goalSuggestions: Array<{ goalId: string; suggestedSteps: string[] }>;
+}
+

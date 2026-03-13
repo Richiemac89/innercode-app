@@ -14,7 +14,7 @@ import { devLog } from "./devLog";
 const ONBOARDING_COMPLETED_KEY = "innercode_onboardingCompletedAt";
 const DAY_MS = 1000 * 60 * 60 * 24;
 
-function getOnboardingCompletedAt(): number | null {
+export function getOnboardingCompletedAt(): number | null {
   try {
     const stored = safeGetItem(ONBOARDING_COMPLETED_KEY);
     if (stored) {

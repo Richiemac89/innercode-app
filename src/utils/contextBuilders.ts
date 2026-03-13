@@ -1,5 +1,7 @@
 import { JournalEntry, Msg, OnboardingAnswer, Goal } from "../types";
-import { analyzeJournalPatterns } from "./journalAnalysis";
+import { analyzeJournalPatterns, getMostNegativePattern } from "./journalAnalysis";
+import { dayKeyFromTs } from "./helpers";
+import { MICRO_ACTIONS } from "../constants/microActions";
 
 export type JournalSnapshotEntry = {
   text: string;
@@ -146,5 +148,133 @@ export function buildGoalsSummary(goals: Goal[]): string {
     return `${g.title} (${g.relevantValue}, ${g.horizon}, ${pct}%${nextLabel})`;
   });
   return "Goals: " + parts.join("; ") + ". Reference their goals when relevant (e.g. progress, next steps). If a goal is completed, you can congratulate; if there's a next step, you can ask about it.";
+}
+
+const MOOD_SCORES: Record<string, number> = {
+  "😭": 1, "☹️": 2, "😐": 3, "🙂": 4, "😄": 5, "😡": 2,
+};
+
+/** Build payload for weekly reflection AI: last 7 days of journals, mood, sparks, goals. */
+export interface WeeklyReflectionPayload {
+  journalSummary: string;
+  recentJournalEntries: JournalSnapshotEntry[];
+  moodByDay: Array<{ dateKey: string; moodLabel?: string; score?: number }>;
+  sparksCompletedThisWeek: string[];
+  goalsForReview: Array<{
+    goalId: string;
+    title: string;
+    relevantValue: string;
+    horizon: string;
+    isCompleted: boolean;
+    hasSteps: boolean;
+    stepsDone: number;
+    stepsTotal: number;
+  }>;
+  valueEntries: [string, number][];
+  onboardingAnswers: string[];
+  negativeThemes?: string[];
+  /** Average mood 1–5 over the last 7 days (from moodByDay), or null if no mood data */
+  averageMoodScoreLast7Days?: number | null;
+}
+
+function buildSparkIdToTextMap(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const actions of Object.values(MICRO_ACTIONS)) {
+    for (const a of actions) {
+      map[a.id] = a.text;
+    }
+  }
+  return map;
+}
+
+export function buildWeeklyReflectionPayload(
+  journalEntries: JournalEntry[],
+  sparkCompletions: Record<string, string[]>,
+  goals: Goal[],
+  valueEntries: [string, number][],
+  onboardingAnswers: string[]
+): WeeklyReflectionPayload {
+  // Use real time for the data window so debug skip doesn't exclude real journals/sparks/mood
+  const now = Date.now();
+  const dayMs = 1000 * 60 * 60 * 24;
+  const sevenDaysAgo = now - 7 * dayMs;
+  const sparkIdToText = buildSparkIdToTextMap();
+
+  const recentEntries = journalEntries
+    .filter((e) => e.createdAt >= sevenDaysAgo)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const { summaryText, recentEntries: snapshots } = buildJournalSummary(recentEntries, 30);
+  const patterns = analyzeJournalPatterns(recentEntries, 7);
+  const negativePattern = getMostNegativePattern(patterns);
+  const negativeThemes = negativePattern ? [negativePattern.word] : undefined;
+
+  const moodByDay: WeeklyReflectionPayload["moodByDay"] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    const dateKey = dayKeyFromTs(d.getTime());
+    const dayEntries = recentEntries.filter((e) => dayKeyFromTs(e.createdAt) === dateKey);
+    const scores: number[] = [];
+    dayEntries.forEach((e) => {
+      if (e.mood) scores.push(MOOD_SCORES[e.mood] ?? 3);
+    });
+    const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : undefined;
+    const moodLabel =
+      avg !== undefined
+        ? avg >= 4.5
+          ? "Very good"
+          : avg >= 3.5
+            ? "Good"
+            : avg >= 2.5
+              ? "Neutral"
+              : avg >= 1.5
+                ? "Low"
+                : "Very low"
+        : undefined;
+    moodByDay.push({ dateKey, moodLabel, score: avg });
+  }
+
+  const sparksCompletedThisWeek: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateKey = dayKeyFromTs(d.getTime());
+    const ids = sparkCompletions[dateKey] ?? [];
+    ids.forEach((id) => {
+      const text = sparkIdToText[id] || id;
+      if (text && !sparksCompletedThisWeek.includes(text)) sparksCompletedThisWeek.push(text);
+    });
+  }
+
+  const goalsForReview = goals.map((g) => {
+    const steps = g.actionSteps || [];
+    return {
+      goalId: g.id,
+      title: g.title,
+      relevantValue: g.relevantValue,
+      horizon: g.horizon,
+      isCompleted: !!g.completedAt,
+      hasSteps: steps.length > 0,
+      stepsDone: steps.filter((s) => s.done).length,
+      stepsTotal: steps.length,
+    };
+  });
+
+  const dayScores = moodByDay.map((d) => d.score).filter((s): s is number => s !== undefined);
+  const averageMoodScoreLast7Days =
+    dayScores.length > 0 ? Math.round((dayScores.reduce((a, b) => a + b, 0) / dayScores.length) * 10) / 10 : null;
+
+  return {
+    journalSummary: summaryText,
+    recentJournalEntries: snapshots,
+    moodByDay,
+    sparksCompletedThisWeek,
+    goalsForReview,
+    valueEntries,
+    onboardingAnswers,
+    negativeThemes,
+    averageMoodScoreLast7Days,
+  };
 }
 

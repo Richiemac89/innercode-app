@@ -1,7 +1,8 @@
 // Static AI Provider
 // Current pattern-matching implementation (moved from AICoach.tsx)
 
-import { AIService, UserContext, CheckInChanges, InsightPattern } from "../aiService";
+import { AIService, UserContext, CheckInChanges, InsightPattern, WeeklyReflectionResult } from "../aiService";
+import type { WeeklyReflectionPayload } from "../contextBuilders";
 import { Suggestion } from "../../components/SuggestionCard";
 import { VALUE_ICONS } from "../../constants/values";
 import { CATEGORY_ICONS } from "../../constants/categories";
@@ -86,6 +87,16 @@ export class StaticAIService implements AIService {
     }
     
     return `Thanks for checking in! Your areas are looking stable. Keep up the great work! 💪`;
+  }
+
+  async generateWeeklyReflection(payload: WeeklyReflectionPayload, context: UserContext): Promise<WeeklyReflectionResult> {
+    const openNoSteps = payload.goalsForReview.filter((g) => !g.isCompleted && !g.hasSteps);
+    return {
+      reflectionText: `This week you logged journals, ${payload.sparksCompletedThisWeek.length} spark(s), and have ${payload.goalsForReview.length} goal(s) in progress. Keep taking small steps that align with your values. 💚`,
+      moodPositiveFactors: ["Journaling and reflection", "Completing sparks", "Progress on goals"].slice(0, 3),
+      moodNegativeFactors: payload.negativeThemes?.length ? payload.negativeThemes.slice(0, 3) : [],
+      goalSuggestions: openNoSteps.map((g) => ({ goalId: g.goalId, suggestedSteps: ["Break the goal into one small step", "Schedule 15 minutes this week", "Reflect on one barrier"] })),
+    };
   }
 
   async generateInsight(pattern: InsightPattern, context: UserContext): Promise<string> {

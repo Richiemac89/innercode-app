@@ -5,7 +5,7 @@ import { Suggestion } from "../components/SuggestionCard";
 import { StaticAIService } from "./aiProviders/staticAI";
 import { OpenAIService } from "./aiProviders/openAI";
 import { FEATURES } from "../constants/featureFlags";
-import { JournalSnapshotEntry } from "./contextBuilders";
+import { JournalSnapshotEntry, WeeklyReflectionPayload } from "./contextBuilders";
 
 // User context passed to AI service
 export interface UserContext {
@@ -26,6 +26,14 @@ export interface UserContext {
   goalsSummary?: string;
 }
 
+// Weekly reflection AI result
+export interface WeeklyReflectionResult {
+  reflectionText: string;
+  moodPositiveFactors: string[];
+  moodNegativeFactors: string[];
+  goalSuggestions: Array<{ goalId: string; suggestedSteps: string[] }>;
+}
+
 // Check-in changes summary
 export interface CheckInChanges {
   improvements: Array<{ category: string; oldScore: number; newScore: number }>;
@@ -41,7 +49,10 @@ export interface AIService {
   
   // Check-in summaries
   generateCheckInSummary(changes: CheckInChanges, context: UserContext): Promise<string>;
-  
+
+  // Weekly reflection (journals, sparks, mood, goals review)
+  generateWeeklyReflection(payload: WeeklyReflectionPayload, context: UserContext): Promise<WeeklyReflectionResult>;
+
   // Daily insights
   generateInsight(pattern: InsightPattern, context: UserContext): Promise<string>;
   
