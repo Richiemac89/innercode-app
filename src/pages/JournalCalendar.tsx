@@ -206,7 +206,7 @@ export function JournalCalendar({
                   border: isSelected
                     ? "2px solid #8B5CF6"
                     : "1px solid #e5e7eb",
-                  background: "#fff",
+                  background: "rgba(255,255,255,0.9)",
                   display: "grid",
                   placeItems: "center",
                   position: "relative",
@@ -270,7 +270,7 @@ export function JournalCalendar({
                     <div
                       key={e.id}
                       style={{
-                        background: "#fff",
+                        background: "rgba(255,255,255,0.9)",
                         border: "1px solid #eee",
                         borderRadius: 14,
                         padding: 12,

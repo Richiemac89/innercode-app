@@ -62,8 +62,6 @@ export function Results({
   const [weakAreasExpanded, setWeakAreasExpanded] = useState(true);
   const [valuesExpanded, setValuesExpanded] = useState(true);
   const [discoveryExpanded, setDiscoveryExpanded] = useState(true);
-  const [journalCtaExpanded, setJournalCtaExpanded] = useState(false);
-
   // Celebration animation on first view
   const [showCelebration, setShowCelebration] = useState(() => !!pendingReveal);
   useEffect(() => {
@@ -141,7 +139,7 @@ export function Results({
         {completedCategories.length < totalCategories && (
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))",
+              background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.25))",
               border: "2px solid #8B5CF6",
               padding: "16px 20px",
               borderRadius: 16,
@@ -161,7 +159,7 @@ export function Results({
         {/* YOUR INNERCODE */}
         <div
           style={{
-            background: "white",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             marginBottom: 24,
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -198,7 +196,7 @@ export function Results({
           </div>
           {/* Quick Insight */}
           <div style={{
-            background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))",
+            background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.25))",
             border: "1px solid rgba(139,92,246,0.2)",
             borderRadius: 12,
             padding: 16,
@@ -253,7 +251,7 @@ export function Results({
         {/* SECTION 2 — Values League (Collapsible) */}
         <div
           style={{
-            background: "white",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             marginBottom: 24,
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -262,87 +260,6 @@ export function Results({
         >
           <ValuesLeague valueEntries={valueEntries} />
         </div>
-
-        {/* Journal CTA – collapsible Morning / Evening */}
-        <section>
-          {onOpenJournal && (
-            <div style={{ marginTop: 12 }}>
-              <div
-                style={{
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  border: "2px solid #6A3ABF",
-                  background: "#fff",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setJournalCtaExpanded((e) => !e)}
-                  style={{
-                    width: "100%",
-                    padding: "20px 24px",
-                    border: "none",
-                    background: "transparent",
-                    color: "#6A3ABF",
-                    fontWeight: 700,
-                    fontSize: 18,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <span>📓 Journal</span>
-                  <span style={{ fontSize: 14 }}>{journalCtaExpanded ? "▲" : "▼"}</span>
-                </button>
-                {journalCtaExpanded && (
-                  <div style={{ display: "grid", gap: 10, padding: "0 16px 16px 16px" }}>
-                    <button
-                      type="button"
-                      onClick={() => onOpenJournal("morning")}
-                      style={{
-                        padding: "16px 20px",
-                        borderRadius: 50,
-                        border: "none",
-                        background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-                        color: "#92400e",
-                        fontWeight: 700,
-                        fontSize: 16,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                    >
-                      ☀️ Morning journal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onOpenJournal("evening")}
-                      style={{
-                        padding: "16px 20px",
-                        borderRadius: 50,
-                        border: "none",
-                        background: "linear-gradient(135deg, #c7d2fe, #a5b4fc)",
-                        color: "#3730a3",
-                        fontWeight: 700,
-                        fontSize: 16,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                      }}
-                    >
-                      🌙 Evening journal
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
       </div>
     </div>
     </>

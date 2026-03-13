@@ -80,7 +80,7 @@ export function MoodTrends({ entries }: MoodTrendsProps) {
   return (
     <div
       style={{
-        background: "#fff",
+        background: "rgba(255,255,255,0.9)",
         borderRadius: 16,
         padding: 20,
         boxShadow: "0 2px 8px rgba(0,0,0,0.08)",

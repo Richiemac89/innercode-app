@@ -1,6 +1,16 @@
 export function GlobalStyles() {
   return (
     <style>{`
+      /* Global background image on all screens */
+      body, #root {
+        background-image: url('/background.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        min-height: 100%;
+      }
+
       :root { 
         --pastel-green-start: #a7f3d0; 
         --pastel-green-end: #6ee7b7;

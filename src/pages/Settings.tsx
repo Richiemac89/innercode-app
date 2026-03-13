@@ -229,7 +229,7 @@ export function Settings({
         {/* Profile Settings – collapsible Name, Email, Password */}
         <div
           style={{
-            background: "#fff",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             marginBottom: 20,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
@@ -509,7 +509,7 @@ export function Settings({
         {/* Data Management – collapsible, muted when expanded */}
         <div
           style={{
-            background: "#fff",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             marginBottom: 20,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
@@ -578,7 +578,7 @@ export function Settings({
                     padding: "8px 14px",
                     borderRadius: 8,
                     border: "1px solid #d1d5db",
-                    background: "#fff",
+                    background: "rgba(255,255,255,0.9)",
                     color: "#6b7280",
                     fontWeight: 500,
                     cursor: "pointer",
@@ -626,7 +626,7 @@ export function Settings({
                     padding: "8px 14px",
                     borderRadius: 8,
                     border: "1px solid #d1d5db",
-                    background: "#fff",
+                    background: "rgba(255,255,255,0.9)",
                     color: "#6b7280",
                     fontWeight: 500,
                     cursor: "pointer",
@@ -687,7 +687,7 @@ export function Settings({
                   padding: "14px 20px",
                   borderRadius: 12,
                   border: "2px solid #f97316",
-                  background: "white",
+                  background: "rgba(255,255,255,0.9)",
                   color: "#f97316",
                   fontWeight: 700,
                   fontSize: 15,
@@ -712,7 +712,7 @@ export function Settings({
                   padding: "14px 20px",
                   borderRadius: 12,
                   border: "2px solid #f97316",
-                  background: "white",
+                  background: "rgba(255,255,255,0.9)",
                   color: "#f97316",
                   fontWeight: 700,
                   fontSize: 15,
@@ -738,7 +738,7 @@ export function Settings({
                     padding: "14px 20px",
                     borderRadius: 12,
                     border: "2px solid #dc2626",
-                    background: "white",
+                    background: "rgba(255,255,255,0.9)",
                     color: "#dc2626",
                     fontWeight: 700,
                     fontSize: 15,
@@ -775,7 +775,7 @@ export function Settings({
         {/* Export for therapist */}
         <div
           style={{
-            background: "#fff",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             padding: 24,
             marginBottom: 20,
@@ -830,7 +830,7 @@ export function Settings({
           style={{
             position: "relative",
             zIndex: 10,
-            background: "#fff",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             padding: 24,
             marginBottom: 20,
@@ -898,7 +898,7 @@ export function Settings({
             padding: "14px 24px",
             borderRadius: 12,
             border: "1px solid #d1d5db",
-            background: "#fff",
+            background: "rgba(255,255,255,0.9)",
             color: "#6b6b6b",
             fontWeight: 600,
             cursor: "pointer",
@@ -933,7 +933,7 @@ export function Settings({
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
-              background: "#fff",
+              background: "rgba(255,255,255,0.9)",
               borderRadius: 16,
               padding: 32,
               maxWidth: 480,
@@ -1007,7 +1007,7 @@ export function Settings({
                   padding: "14px 24px",
                   borderRadius: 12,
                   border: "1px solid #d1d5db",
-                  background: "#fff",
+                  background: "rgba(255,255,255,0.9)",
                   color: "#6b6b6b",
                   fontWeight: 600,
                   cursor: "pointer",

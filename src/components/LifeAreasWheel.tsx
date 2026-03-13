@@ -99,7 +99,7 @@ export function LifeAreasWheel({ categoryScores, completedCategories, categoryPh
                 <div
                   key={category}
                   style={{
-                    background: "white",
+                    background: "rgba(255,255,255,0.9)",
                     borderRadius: 16,
                     padding: 20,
                     border: "2px solid #e5e7eb",
@@ -224,7 +224,7 @@ export function LifeAreasWheel({ categoryScores, completedCategories, categoryPh
                             padding: "10px 16px",
                             borderRadius: 12,
                             border: "2px solid #8B5CF6",
-                            background: "white",
+                            background: "rgba(255,255,255,0.9)",
                             color: "#8B5CF6",
                             fontWeight: 600,
                             fontSize: 14,
@@ -332,7 +332,7 @@ export function LifeAreasWheel({ categoryScores, completedCategories, categoryPh
       <div style={{ 
         marginTop: 24, 
         padding: 16, 
-        background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))",
+        background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.25))",
         borderRadius: 12,
         textAlign: "center"
       }}>

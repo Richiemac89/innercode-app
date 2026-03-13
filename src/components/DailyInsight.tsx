@@ -143,7 +143,7 @@ export function DailyInsight({ insight, onTalkAboutIt, onDismiss }: DailyInsight
             padding: "10px 18px",
             borderRadius: 12,
             border: "2px solid #8B5CF6",
-            background: "white",
+            background: "rgba(255,255,255,0.9)",
             color: "#8B5CF6",
             fontWeight: 600,
             fontSize: 14,

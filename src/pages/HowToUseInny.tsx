@@ -11,7 +11,7 @@ export function HowToUseInny({ onBack, onOpenAICoach }: HowToUseInnyProps) {
   const background = "linear-gradient(135deg, rgba(167,139,250,0.12), rgba(253,186,116,0.12))";
 
   const sectionStyle = {
-    background: "#fff",
+    background: "rgba(255,255,255,0.9)",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,

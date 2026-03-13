@@ -403,7 +403,7 @@ export function AICoach({
       <div
         style={{
           minHeight: "100vh",
-          background: "white",
+          background: "rgba(255,255,255,0.9)",
           paddingBottom: "100px",
         }}
       >
@@ -630,7 +630,7 @@ export function AICoach({
     <div
       style={{
         minHeight: "100vh",
-        background: "white",
+        background: "rgba(255,255,255,0.9)",
         paddingBottom: "100px",
       }}
     >
@@ -758,7 +758,7 @@ export function AICoach({
 
       {/* Action Buttons (only in suggestion chat mode) */}
       {mode === "suggestionChat" && selectedSuggestion && (
-        <div style={{ padding: "12px 24px", background: "white", borderTop: "1px solid #f3f4f6" }}>
+        <div style={{ padding: "12px 24px", background: "rgba(255,255,255,0.9)", borderTop: "1px solid #f3f4f6" }}>
           <button
             onClick={handleJournalAbout}
             style={{
@@ -766,7 +766,7 @@ export function AICoach({
               padding: "12px 16px",
               borderRadius: "50px",
               border: "1px solid #6A3ABF",
-              background: "white",
+              background: "rgba(255,255,255,0.9)",
               color: "#6A3ABF",
               fontSize: "14px",
               fontWeight: 600,

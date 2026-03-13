@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { FilterChip } from "../components/FilterChip";
 import { Celebration } from "../components/Celebration";
 import { JournalEntry, type JournalSlot } from "../types";
 import { has, dayKeyFromTs, getCurrentTime } from "../utils/helpers";
 import { useResetZoom } from "../utils/useResetZoom";
+import { getAffirmationsForUser, getEveningAffirmations } from "../constants/affirmations";
 
 function getDefaultSlot(): JournalSlot {
   const hour = new Date().getHours();
@@ -16,13 +17,16 @@ function calculateStreak(entries: JournalEntry[]): number {
   const daysWithEntries = new Set(
     entries.map((e) => dayKeyFromTs(e.createdAt))
   );
-  const todayKey = dayKeyFromTs(getCurrentTime());
-  if (!daysWithEntries.has(todayKey)) return 0;
+  const now = getCurrentTime();
+  const todayKey = dayKeyFromTs(now);
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
 
+  // If user has journaled today: count including today. If not: show yesterday's streak so they never see 0 until they've missed a full day.
+  const startFrom = daysWithEntries.has(todayKey) ? new Date(todayStart) : new Date(yesterdayStart);
   let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let currentDate = new Date(today);
+  let currentDate = new Date(startFrom);
 
   while (daysWithEntries.has(dayKeyFromTs(currentDate.getTime()))) {
     streak++;
@@ -45,6 +49,12 @@ interface JournalProps {
   goalsUnlocked?: boolean;
   /** Open on morning or evening tab (default: by time of day) */
   initialSlot?: JournalSlot;
+  /** User's completed life areas — used to filter morning affirmations */
+  completedCategories?: string[];
+  /** User's value keys from results — used to filter morning affirmations */
+  userValueKeys?: string[];
+  /** Called when the thank-you overlay visibility changes (e.g. to hide floating menu) */
+  onThankYouOverlayChange?: (visible: boolean) => void;
 }
 
 export function Journal({
@@ -59,6 +69,9 @@ export function Journal({
   goals = [],
   goalsUnlocked = false,
   initialSlot,
+  completedCategories = [],
+  userValueKeys = [],
+  onThankYouOverlayChange,
 }: JournalProps) {
   /** Fixed for this screen: morning or evening, no in-page toggle */
   const slot: JournalSlot = initialSlot ?? getDefaultSlot();
@@ -79,6 +92,17 @@ export function Journal({
   /** Prevents double-submit (e.g. double-click or Strict Mode) from creating duplicate entries */
   const savingRef = useRef(false);
 
+  const morningAffirmations = useMemo(
+    () => getAffirmationsForUser(completedCategories, userValueKeys),
+    [completedCategories, userValueKeys]
+  );
+  const eveningAffirmations = useMemo(
+    () => (slot === "evening" ? getEveningAffirmations() : []),
+    [slot]
+  );
+  const carouselItems = slot === "morning" ? morningAffirmations : eveningAffirmations;
+  const [currentAffirmationIndex, setCurrentAffirmationIndex] = useState(0);
+
   const todayKey = dayKeyFromTs(getCurrentTime());
   const hasMorningToday = entries.some(
     (e) => dayKeyFromTs(e.createdAt) === todayKey && e.slot === "morning"
@@ -90,12 +114,26 @@ export function Journal({
     (slot === "morning" ? hasMorningToday : hasEveningToday) || savedSlot === slot;
   const streak = calculateStreak(entries);
 
+  // Notify parent when thank-you overlay is shown/hidden (e.g. to hide floating menu)
+  useEffect(() => {
+    onThankYouOverlayChange?.(locked);
+  }, [locked, onThankYouOverlayChange]);
+
   // Clear savedSlot once entries prop includes the saved entry (avoids redundant state)
   useEffect(() => {
     if (!savedSlot) return;
     if (savedSlot === "morning" && hasMorningToday) setSavedSlot(null);
     if (savedSlot === "evening" && hasEveningToday) setSavedSlot(null);
   }, [savedSlot, hasMorningToday, hasEveningToday]);
+
+  // Auto-rotate affirmations every 8 seconds (morning and evening)
+  useEffect(() => {
+    if (carouselItems.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrentAffirmationIndex((prev) => (prev + 1) % carouselItems.length);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [carouselItems.length]);
 
   // Reset form when switching between morning and evening journal
   useEffect(() => {
@@ -112,6 +150,7 @@ export function Journal({
     setGoalReflectionSnippet("");
     setGoalReflectionExpanded(false);
     setSavedSlot(null);
+    setCurrentAffirmationIndex(0);
 
     // Scroll to top when opening this journal slot (same component, so useResetZoom doesn't run again)
     window.scrollTo(0, 0);
@@ -214,65 +253,170 @@ export function Journal({
         style={{
           minHeight: "100vh",
           background:
-            slot === "morning"
-              ? "linear-gradient(135deg, #fafbff 0%, #f0f4ff 50%, #e8eeff 100%)"
-              : "linear-gradient(135deg, #ebe8f5 0%, #e2deef 50%, #d9d4e8 100%)",
+            "linear-gradient(135deg, rgba(167,139,250,0.12), rgba(253,186,116,0.12))",
         }}
       >
-        <div className="page" style={{ paddingTop: "70px" }}>
-        {/* Header: emoji + slot label only (no time-based greeting) */}
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>
-            {slot === "morning" ? "☀️" : "🌙"}
-          </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 700,
-              color: "#3b3b3b",
-            }}
-          >
-            {slot === "morning" ? "Morning journal" : "Evening journal"}
-          </p>
-        </div>
-
-        {/* Streak Badge and Private Label */}
-        {streak > 0 && (
+        {/* Thank-you modal when user has already journaled for this slot today */}
+        {locked && (
           <div
             style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "transparent",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
-              marginBottom: 16,
+              zIndex: 1000,
+              padding: 20,
             }}
           >
             <div
               style={{
-                background: streak >= 7 ? "linear-gradient(135deg, #fef3c7, #fde68a)" : "rgba(139,92,246,0.1)",
-                border: streak >= 7 ? "2px solid #f59e0b" : "1px solid rgba(139,92,246,0.3)",
-                padding: "4px 12px",
-                borderRadius: 999,
-                fontSize: 14,
-                fontWeight: 700,
+                background: "rgba(255,255,255,0.9)",
+                borderRadius: 20,
+                padding: 24,
+                maxWidth: 400,
+                width: "100%",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: 4,
+                textAlign: "center",
               }}
             >
-              {streak >= 7 ? "🔥" : "📅"} {streak} day{streak !== 1 ? "s" : ""}
-            </div>
-            <div style={{ fontSize: 12, color: "#6b6b6b" }}>
-              Private • Local only
+              <div style={{ fontSize: 56, marginBottom: 16 }}>📓</div>
+              <p
+                style={{
+                  margin: "0 0 24px",
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "#3b3b3b",
+                  lineHeight: 1.5,
+                  maxWidth: 360,
+                }}
+              >
+                Journal submitted, thanks — journaling helps you reflect and grow your Inner Code. Come back tomorrow to journal again.
+              </p>
+              <button
+                type="button"
+                onClick={onBack}
+                style={{
+                  padding: "16px 32px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: "linear-gradient(135deg, #6A3ABF, #8B5CF6)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(106, 58, 191, 0.35)",
+                }}
+              >
+                Back to dashboard
+              </button>
             </div>
           </div>
+        )}
+
+        <div className="page" style={{ paddingTop: "70px" }}>
+        {!locked && (
+        <>
+        {/* Header: emoji + title centered, streak badge on right */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }} />
+          <div style={{ textAlign: "center", flexShrink: 0 }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>
+              {slot === "morning" ? "☀️" : "🌙"}
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 700,
+                color: "#3b3b3b",
+              }}
+            >
+              {slot === "morning" ? "Morning journal" : "Evening journal"}
+            </p>
+          </div>
+          <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", minWidth: 0 }}>
+            {streak > 0 && (
+              <div
+                style={{
+                  background: streak >= 7 ? "linear-gradient(135deg, #fef3c7, #fde68a)" : "rgba(139,92,246,0.1)",
+                  border: streak >= 7 ? "2px solid #f59e0b" : "1px solid rgba(139,92,246,0.3)",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2,
+                  textAlign: "center",
+                }}
+              >
+                <span style={{ fontSize: 10, lineHeight: 1 }}>{streak >= 7 ? "🔥" : "📅"}</span> {streak} day streak
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Affirmations carousel: between title and How Journaling Works (morning and evening) */}
+        {carouselItems.length > 0 && (
+          <>
+            <div
+              style={{
+                marginBottom: 24,
+                padding: "16px 20px",
+                background: "rgba(255,255,255,0.9)",
+                border: "2px solid rgba(106, 58, 191, 0.2)",
+                borderRadius: 16,
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+                minHeight: "110px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                key={currentAffirmationIndex}
+                style={{
+                  animation: "slideUpFade 0.6s ease-out",
+                }}
+              >
+                <div style={{ fontSize: 14, color: "#4b4b4b", fontStyle: "italic", lineHeight: 1.5 }}>
+                  {carouselItems[currentAffirmationIndex % carouselItems.length].text}
+                </div>
+              </div>
+            </div>
+            <style>{`
+              @keyframes slideUpFade {
+                0% { opacity: 0; transform: translateY(20px); }
+                100% { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
+          </>
         )}
 
         {/* Explainer */}
         <div
           style={{
-            background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))",
+            background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.25))",
             border: "1px solid rgba(139,92,246,0.2)",
             borderRadius: 16,
             padding: "16px 18px",
@@ -465,7 +609,7 @@ export function Journal({
                     border: "2px solid rgba(106, 58, 191, 0.2)",
                     borderRadius: 12,
                     padding: "10px 12px",
-                    background: "#fff",
+                    background: "rgba(255,255,255,0.9)",
                     opacity: locked ? 0.6 : 1,
                     transition: "border-color 0.2s",
                     outline: "none",
@@ -576,7 +720,7 @@ export function Journal({
                       borderRadius: 12,
                       border: "2px solid rgba(106, 58, 191, 0.2)",
                       marginBottom: 8,
-                      background: "#fff",
+                      background: "rgba(255,255,255,0.9)",
                       fontSize: 14,
                     }}
                   >
@@ -598,7 +742,7 @@ export function Journal({
                         padding: "10px 12px",
                         borderRadius: 12,
                         border: "2px solid rgba(106, 58, 191, 0.2)",
-                        background: "#fff",
+                        background: "rgba(255,255,255,0.9)",
                         fontSize: 14,
                         outline: "none",
                       }}
@@ -631,8 +775,10 @@ export function Journal({
             </button>
           </div>
         </div>
+        </>
+        )}
+        </div>
       </div>
-    </div>
     </>
   );
 }

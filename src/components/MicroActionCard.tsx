@@ -14,7 +14,7 @@ export function MicroActionCard({ action, completed, onComplete }: MicroActionCa
   return (
     <div
       style={{
-        background: completed ? "#f9fafb" : "white",
+        background: completed ? "rgba(249,250,251,0.9)" : "rgba(255,255,255,0.9)",
         border: completed ? "1px solid #e5e7eb" : "2px solid rgba(106, 58, 191, 0.2)",
         borderRadius: 16,
         padding: 16,

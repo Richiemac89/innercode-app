@@ -231,7 +231,7 @@ export function Goals({
               Complete all 12 life areas, 5 journal entries, and 3 sparks so you understand your values before setting goals.
             </p>
           </div>
-          <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
               <span style={{ fontSize: 20 }}>{p.areasComplete ? "✅" : "📋"}</span>
               <span>
@@ -540,7 +540,7 @@ export function Goals({
           >
             ← Back
           </button>
-          <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 16 }}>
+          <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#3b3b3b" }}>{g.title}</h1>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -707,7 +707,7 @@ export function Goals({
         {goals.length > 0 && (
           <div
             style={{
-              background: "white",
+              background: "rgba(255,255,255,0.9)",
               borderRadius: 16,
               padding: 20,
               marginBottom: 24,
@@ -753,7 +753,7 @@ export function Goals({
         {goals.length === 0 ? (
           <div
             style={{
-              background: "white",
+              background: "rgba(255,255,255,0.9)",
               borderRadius: 16,
               padding: 48,
               textAlign: "center",
@@ -798,7 +798,7 @@ export function Goals({
                             display: "block",
                             width: "100%",
                             textAlign: "left",
-                            background: "white",
+                            background: "rgba(255,255,255,0.9)",
                             border: "1px solid #e5e7eb",
                             borderRadius: 16,
                             padding: 16,

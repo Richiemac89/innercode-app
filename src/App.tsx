@@ -180,7 +180,8 @@ export default function App() {
               }
             }
             // No in-progress local state: fall through and don't restore to onboarding
-          } else if (hasResults && hasSeenResults) {
+          } else {
+            // Main app routes (dashboard, journal, results, etc.): restore on refresh so user stays on same page
             devLog.log('Restoring last active route:', lastActiveRoute);
             return lastActiveRoute as Route;
           }
@@ -315,6 +316,7 @@ export default function App() {
 
   const [route, setRoute] = useState<Route>('newLanding');
   const [initialJournalSlot, setInitialJournalSlot] = useState<'morning' | 'evening' | null>(null);
+  const [journalThankYouOverlayVisible, setJournalThankYouOverlayVisible] = useState(false);
   const [showFloatingMenuOnAiCoach, setShowFloatingMenuOnAiCoach] = useState(true);
   const hasInitializedRoute = useRef(false);
 
@@ -329,6 +331,24 @@ export default function App() {
       setInitialJournalSlot(null);
     }
   }, [route]);
+
+  // Persist journal slot so refresh returns to same morning/evening page
+  const JOURNAL_SLOT_KEY = 'innercode_lastJournalSlot';
+  useEffect(() => {
+    if (route !== 'journal') return;
+    // Only persist when we have an explicit slot; otherwise we'd overwrite the saved value with time-based default before restore runs
+    if (initialJournalSlot === null) return;
+    safeSetItem(JOURNAL_SLOT_KEY, initialJournalSlot);
+  }, [route, initialJournalSlot]);
+
+  // Restore journal slot when route is restored to journal after refresh
+  useEffect(() => {
+    if (route !== 'journal' || initialJournalSlot !== null) return;
+    const saved = safeGetItem(JOURNAL_SLOT_KEY);
+    if (saved === 'morning' || saved === 'evening') {
+      setInitialJournalSlot(saved);
+    }
+  }, [route, initialJournalSlot]);
 
   // CRITICAL FIX: Wait for auth and sync to complete before determining route
   // This prevents race condition where route is set before userData is loaded
@@ -407,10 +427,10 @@ export default function App() {
                       const parsed = JSON.parse(localState);
                       const sel = parsed.selectedCategories ?? parsed.selected_categories ?? [];
                       const comp = parsed.completedCategories ?? parsed.completed_categories ?? [];
-                      return Array.isArray(sel) && sel.some((c: string) => !(Array.isArray(comp) && comp.includes(c)));
+                      return Array.isArray(sel) && sel.some((c: string) => !(Array.isArray(comp) && comp.includes(c))) && hasResults && hasSeenResults;
                     } catch { return false; }
-                  })() && hasResults && hasSeenResults
-                : hasResults && hasSeenResults;
+                  })()
+                : true; // Main app routes: restore so refresh/focus keeps user on same page
               if (canRestore) {
                 devLog.log('Restoring route after focus:', lastActiveRoute);
                 setRoute(lastActiveRoute as Route);
@@ -1449,6 +1469,9 @@ export default function App() {
 
   // Immediately save route to localStorage whenever it changes (mobile-friendly)
   useEffect(() => {
+    // Don't overwrite saved route on initial mount before restore runs (fixes refresh sending user to dashboard)
+    if (!hasInitializedRoute.current) return;
+
     const routeForCache = resolveRouteForCache(route);
     if (!routeForCache) {
       return;
@@ -2286,7 +2309,7 @@ export default function App() {
               return Array.isArray(sel) && sel.some((c: string) => !(Array.isArray(comp) && comp.includes(c))) && hasResults && hasSeenResults;
             } catch { return false; }
           })()
-        : hasResults && hasSeenResults;
+        : true; // Main app routes: restore so refresh keeps user on same page
       if (canRestore) {
         devLog.log('Restoring last active route after hydration:', lastActiveRoute);
         setRoute(lastActiveRoute as Route);
@@ -2365,7 +2388,7 @@ export default function App() {
                   padding: "12px 24px",
                   borderRadius: 12,
                   border: "2px solid #8B5CF6",
-                  background: "#fff",
+                  background: "rgba(255,255,255,0.9)",
                   color: "#8B5CF6",
                   fontWeight: 700,
                   fontSize: 16,
@@ -2853,9 +2876,11 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
+        {!journalThankYouOverlayVisible && (
+          <FloatingMenu onNav={(r) => setRoute(r)} onLogout={signOut} goalsUnlocked={goalsUnlocked} onJournalWithSlot={(slot) => { setInitialJournalSlot(slot); setRoute("journal"); }} />
+        )}
         <Journal
-          onBack={() => setRoute("results")}
+          onBack={() => setRoute("dashboard")}
           categories={[...categories]}
           categoryIcons={{ ...CATEGORY_ICONS }}
           valuesPool={Object.keys(VALUE_ICONS)}
@@ -2865,6 +2890,9 @@ export default function App() {
           goals={goals.map((g) => ({ id: g.id, title: g.title }))}
           goalsUnlocked={goalsUnlocked}
           initialSlot={initialJournalSlot ?? undefined}
+          completedCategories={completedCategories}
+          userValueKeys={results?.valueEntries?.map(([k]) => k) ?? []}
+          onThankYouOverlayChange={setJournalThankYouOverlayVisible}
         />
       </>
     );

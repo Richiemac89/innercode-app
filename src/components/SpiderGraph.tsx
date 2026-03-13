@@ -44,7 +44,7 @@ export function SpiderGraph({ categoryScores, completedCategories }: SpiderGraph
 
   return (
     <div style={{ 
-      background: 'white',
+      background: 'rgba(255,255,255,0.9)',
       borderRadius: 24,
       padding: '32px 24px',
       boxShadow: '0 4px 20px rgba(0,0,0,0.08)',

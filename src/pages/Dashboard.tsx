@@ -50,13 +50,16 @@ function calculateStreak(entries: JournalEntry[]): number {
   const daysWithEntries = new Set(
     entries.map((e) => dayKeyFromTs(e.createdAt))
   );
-  const todayKey = dayKeyFromTs(getCurrentTime());
-  if (!daysWithEntries.has(todayKey)) return 0;
+  const now = getCurrentTime();
+  const todayKey = dayKeyFromTs(now);
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
 
+  // If user has journaled today: count including today. If not: show yesterday's streak so they never see 0 until they've missed a full day.
+  const startFrom = daysWithEntries.has(todayKey) ? new Date(todayStart) : new Date(yesterdayStart);
   let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let currentDate = new Date(today);
+  let currentDate = new Date(startFrom);
 
   while (daysWithEntries.has(dayKeyFromTs(currentDate.getTime()))) {
     streak++;
@@ -433,7 +436,7 @@ export function Dashboard({
   // Streak card tier for 10/20/30+ consecutive days (illuminating colors)
   const streakTier = streak >= 30 ? "fire" : streak >= 20 ? "hot" : streak >= 10 ? "warm" : "normal";
   const streakCardStyle: Record<string, { background: string; border: string; boxShadow: string }> = {
-    normal: { background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
+    normal: { background: "rgba(255,255,255,0.9)", border: "1px solid #e5e7eb", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
     warm: { background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", border: "2px solid #f59e0b", boxShadow: "0 4px 12px rgba(245,158,11,0.25)" },
     hot: { background: "linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)", border: "2px solid #ea580c", boxShadow: "0 4px 16px rgba(234,88,12,0.3)" },
     fire: { background: "linear-gradient(135deg, #fed7aa 0%, #fdba74 50%, #fb923c 100%)", border: "2px solid #c2410c", boxShadow: "0 6px 20px rgba(194,65,12,0.35)" },
@@ -494,8 +497,9 @@ export function Dashboard({
           style={{
             marginBottom: 24,
             padding: "16px 20px",
-            background: "rgba(139,92,246,0.06)",
-            borderRadius: 8,
+            background: "rgba(255,255,255,0.9)",
+            border: "2px solid rgba(106, 58, 191, 0.2)",
+            borderRadius: 16,
             textAlign: "center",
             position: "relative",
             overflow: "hidden",
@@ -538,7 +542,7 @@ export function Dashboard({
         {hasCompletedOnboarding && completedCategories.length < totalCategories && onExpandCategories && (
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))",
+              background: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.25))",
               border: "2px solid #8B5CF6",
               padding: "14px 20px",
               borderRadius: 16,
@@ -829,7 +833,7 @@ export function Dashboard({
           {/* Total Entries Card */}
           <div
             style={{
-              background: "#fff",
+              background: "rgba(255,255,255,0.9)",
               borderRadius: 16,
               padding: "20px 16px",
               textAlign: "center",
@@ -850,7 +854,7 @@ export function Dashboard({
           {/* Average Life Areas Score Card */}
           <div
             style={{
-              background: "#fff",
+              background: "rgba(255,255,255,0.9)",
               borderRadius: 16,
               padding: "20px 16px",
               textAlign: "center",
@@ -906,7 +910,7 @@ export function Dashboard({
           {/* Average Mood Card */}
           <div
             style={{
-              background: "#fff",
+              background: "rgba(255,255,255,0.9)",
               borderRadius: 16,
               padding: "20px 16px",
               textAlign: "center",
@@ -1041,7 +1045,7 @@ export function Dashboard({
         {/* Last Journal Info */}
         <div
           style={{
-            background: "#fff",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             padding: 16,
             marginTop: 24,
@@ -1088,7 +1092,7 @@ export function Dashboard({
                 boxSizing: "border-box",
                 border: "2px solid #8B5CF6",
                 borderRadius: 16,
-                background: "#fff",
+                background: "rgba(255,255,255,0.9)",
                 overflow: "hidden",
               }}
             >
@@ -1173,7 +1177,7 @@ export function Dashboard({
                 padding: "0 24px",
                 borderRadius: 16,
                 border: "2px solid #8B5CF6",
-                background: "#fff",
+                background: "rgba(255,255,255,0.9)",
                 color: "#8B5CF6",
                 fontWeight: 700,
                 fontSize: 18,
@@ -1201,7 +1205,7 @@ export function Dashboard({
                     padding: "18px 16px",
                     borderRadius: 16,
                     border: "1px solid #d1d5db",
-                    background: "#fff",
+                    background: "rgba(255,255,255,0.9)",
                     color: "#6b6b6b",
                     fontWeight: 600,
                     fontSize: 16,
@@ -1229,7 +1233,7 @@ export function Dashboard({
                     padding: "18px 16px",
                     borderRadius: 16,
                     border: "1px solid #d1d5db",
-                    background: "#fff",
+                    background: "rgba(255,255,255,0.9)",
                     color: "#6b6b6b",
                     fontWeight: 600,
                     fontSize: 16,
@@ -1412,38 +1416,24 @@ export function Dashboard({
                 <p style={{ 
                   color: "#6b6b6b", 
                   fontSize: 15, 
-                  lineHeight: 1.6,
+                  lineHeight: 1.5,
                   margin: "0 0 12px",
                 }}>
-                  Your <strong>day streak</strong> is the number of <strong>consecutive days</strong> you’ve journaled. Journal once (morning or evening) or twice in a day—each day still counts as one. If you skip a day, the streak resets to zero.
+                  <strong>Consecutive days</strong> you’ve journaled. The number updates when you journal again the next day (first day = 0, then 1, 2…). Morning or evening—one per day counts. Skip a day and it resets to 0.
                 </p>
                 <div style={{
                   background: "rgba(245,158,11,0.08)",
                   borderRadius: 12,
-                  padding: 12,
-                  marginBottom: 12,
+                  padding: 10,
+                  marginBottom: 10,
                 }}>
-                  <div style={{ fontSize: 13, color: "#4b4b4b", marginBottom: 4 }}>
-                    <strong>🔥 Why do I see a fire?</strong>
-                  </div>
-                  <p style={{ fontSize: 13, color: "#6b6b6b", lineHeight: 1.6, margin: 0 }}>
-                    When you reach <strong>5 or more</strong> consecutive days, a fire appears in the corner of the card to celebrate your consistency. At 10, 20, and 30+ days the card also lights up with warmer colours to show you’re on a hot streak!
+                  <p style={{ fontSize: 13, color: "#6b6b6b", lineHeight: 1.45, margin: 0 }}>
+                    <strong>🔥</strong> At <strong>5+</strong> days a fire appears; at 10, 20, 30+ the card lights up.
                   </p>
                 </div>
-                <div style={{ 
-                  padding: 12, 
-                  background: "rgba(139,92,246,0.08)", 
-                  borderRadius: 12,
-                }}>
-                  <p style={{ 
-                    color: "#6d28d9", 
-                    fontSize: 14, 
-                    lineHeight: 1.5,
-                    margin: 0,
-                  }}>
-                    💡 <strong>Tip:</strong> Building a streak is about showing up each day—even a short journal entry keeps it going.
-                  </p>
-                </div>
+                <p style={{ fontSize: 13, color: "#6d28d9", lineHeight: 1.45, margin: 0 }}>
+                  💡 <strong>Tip:</strong> Even a short entry each day keeps your streak going.
+                </p>
               </>
             ) : null}
           </div>

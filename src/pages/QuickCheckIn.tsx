@@ -133,7 +133,7 @@ export function QuickCheckIn({
             {summary && (
               <div
                 style={{
-                  background: "white",
+                  background: "rgba(255,255,255,0.9)",
                   borderRadius: 16,
                   padding: 20,
                   marginBottom: 20,
@@ -304,7 +304,7 @@ export function QuickCheckIn({
         {/* Current Area */}
         <div
           style={{
-            background: "white",
+            background: "rgba(255,255,255,0.9)",
             borderRadius: 16,
             padding: 24,
             marginBottom: 24,
@@ -409,7 +409,7 @@ export function QuickCheckIn({
                 padding: "16px 24px",
                 borderRadius: 16,
                 border: "2px solid #8B5CF6",
-                background: "white",
+                background: "rgba(255,255,255,0.9)",
                 color: "#8B5CF6",
                 fontWeight: 700,
                 fontSize: 18,
